@@ -1,0 +1,11 @@
+[package]
+name = "emacs-gtk3-module"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+emacs = "0.21.0"
+gtk = { version = "0.18.2", features = ["v3_24"] }
