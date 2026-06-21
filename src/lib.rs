@@ -21,6 +21,7 @@ fn show_window(env: &Env) -> Result<Value<'_>> {
     INIT.call_once(|| {
         // Try to init, ignore failure if already initialized
         let _ = gtk::init();
+        eprintln!("just inited gtk3. how?");
     });
 
     let win = gtk::Window::new(gtk::WindowType::Toplevel);
