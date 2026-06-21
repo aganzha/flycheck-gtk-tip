@@ -1,43 +1,120 @@
-// attemp1
-// it works!
-// ;;(module-load (expand-file-name "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so"))
-// ;;(emacs-gtk3-module-show-window)
-
+use async_channel::Sender;
 use emacs::{defun, Env, Result, Value};
+use gtk::glib;
 use gtk::prelude::*;
-use std::sync::Once;
+use std::sync::{Once, OnceLock, RwLock};
 
 emacs::plugin_is_GPL_compatible!();
 
 static INIT: Once = Once::new();
+
+static SENDER: OnceLock<RwLock<Sender<Event>>> = OnceLock::new();
 
 #[emacs::module(name = "emacs-gtk3-module")]
 fn init(_env: &Env) -> Result<()> {
     Ok(())
 }
 
+pub enum Event {
+    Test,
+    Best(String),
+}
+
 #[defun]
 fn show_window(env: &Env) -> Result<Value<'_>> {
     INIT.call_once(|| {
-        // Try to init, ignore failure if already initialized
         let _ = gtk::init();
-        eprintln!("just inited gtk3. how?");
     });
-
+    let (sender, receiver) = async_channel::unbounded();
+    SENDER.get_or_init(|| RwLock::new(sender.clone()));
     let win = gtk::Window::new(gtk::WindowType::Toplevel);
     win.set_title("From Emacs (GTK3)");
     win.set_default_size(400, 300);
 
     let btn = gtk::Button::with_label("Click me");
-    btn.connect_clicked(|_| {
-        eprintln!("Button clicked from Emacs module");
+    btn.connect_clicked({
+        //let window = win.clone();
+        let sender = sender.clone();
+        move |_| {
+            eprintln!("Button clicked from Emacs module");
+            //eprintln!("window! {:?}", window);
+            sender
+                .send_blocking(Event::Test)
+                .expect("cant send through channel");
+        }
     });
     win.add(&btn);
-
     win.show_all();
 
+    glib::spawn_future_local(async move {
+        while let Ok(event) = receiver.recv().await {
+            match event {
+                Event::Test => {
+                    eprintln!("🐦 xtest vent! {:?}", win);
+                }
+                Event::Best(title) => {
+                    win.set_title(&title);
+                    eprintln!("🧣 BEST vent! {:?} and title {:?}", win, title);
+                }
+            }
+        }
+    });
     Ok(env.intern("t")?)
 }
+
+#[defun]
+fn set_window_title(env: &Env, title: String) -> Result<Value<'_>> {
+    eprintln!("💨 set_window_title! {:?}", &title);
+    if let Some(lock) = SENDER.get() {
+        let sender = lock.read().unwrap();
+        sender
+            .send_blocking(Event::Best(title))
+            .expect("cant send through channel");
+    }
+    Ok(env.intern("t")?)
+}
+
+// ----------------------------------------------------
+// // attemp1
+// // it works!
+// // ;;(module-load (expand-file-name "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so"))
+// // ;;(emacs-gtk3-module-show-window)
+
+// use emacs::{defun, Env, Result, Value};
+// use gtk::prelude::*;
+// use std::sync::Once;
+
+// emacs::plugin_is_GPL_compatible!();
+
+// static INIT: Once = Once::new();
+
+// #[emacs::module(name = "emacs-gtk3-module")]
+// fn init(_env: &Env) -> Result<()> {
+//     Ok(())
+// }
+
+// #[defun]
+// fn show_window(env: &Env) -> Result<Value<'_>> {
+//     INIT.call_once(|| {
+//         // Try to init, ignore failure if already initialized
+//         let _ = gtk::init();
+//         eprintln!("just inited gtk3. how?");
+//     });
+
+//     let win = gtk::Window::new(gtk::WindowType::Toplevel);
+//     win.set_title("From Emacs (GTK3)");
+//     win.set_default_size(400, 300);
+
+//     let btn = gtk::Button::with_label("Click me");
+//     btn.connect_clicked(|_| {
+//         eprintln!("Button clicked from Emacs module");
+//     });
+//     win.add(&btn);
+
+//     win.show_all();
+
+//     Ok(env.intern("t")?)
+// }
 
 // attempt 0
 // aganzha@fedora:~$ RUST_BACKTRACE=1 emacs
@@ -80,12 +157,6 @@ fn show_window(env: &Env) -> Result<Value<'_>> {
 //   32: <unknown>
 // note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
 // ^_^_
-
-
-
-
-
-
 
 // use emacs::{defun, Env, Result, Value};
 // use gtk::prelude::*;

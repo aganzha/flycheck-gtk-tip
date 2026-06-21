@@ -9,3 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 emacs = "0.21.0"
 gtk = { version = "0.18.2", features = ["v3_24"] }
+async-channel = "2.5.0"
