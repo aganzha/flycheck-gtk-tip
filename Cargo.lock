@@ -171,8 +171,11 @@ name = "emacs-gtk3-module"
 version = "0.1.0"
 dependencies = [
  "async-channel",
+ "cairo-rs",
  "emacs",
  "gtk",
+ "pango",
+ "pangocairo",
 ]
 
 [[package]]
