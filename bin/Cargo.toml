@@ -1,0 +1,11 @@
+[package]
+name = "emacs-gtk3-module-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gtk = { version = "0.18.2", features = ["v3_24"] }
+cairo-rs = "0.18.0"
+pango = "0.18.0"
+pangocairo = {version = "0.18"}
+async-channel = "2.5.0"
