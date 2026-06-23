@@ -130,7 +130,8 @@ fn show_window(env: &Env) -> Result<Value<'_>> {
     let (sender, receiver) = async_channel::unbounded();
     SENDER.get_or_init(|| RwLock::new(sender.clone()));
 
-    let win = gtk::Window::new(gtk::WindowType::Toplevel);
+    //let win = gtk::Window::new(gtk::WindowType::Toplevel);
+    //win.set_type_hint(gtk::gdk::WindowTypeHint::Popup);
     let (text_surface, tw, th) = render_text_offscreen("Hello from thread", "Sans", 24.0);
     let canvas = Rc::new(RefCell::new(text_surface));
     let padding = 20.0;
@@ -142,12 +143,24 @@ fn show_window(env: &Env) -> Result<Value<'_>> {
     let content_h = th as f64 + padding * 2.0;
     let total_h = content_h + arrow_size;
 
-    let window = gtk::Window::new(gtk::WindowType::Toplevel);
+    let window = gtk::Window::new(gtk::WindowType::Popup);
+    window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
     window.set_decorated(false);
     window.set_default_size(content_w as i32, total_h as i32);
     window.set_resizable(false);
     window.set_app_paintable(true);
 
+    // if let Some(display) = gtk::gdk::Display::default() {
+    //     // foreign_new_for_display creates a GdkWindow wrapper around the native window
+    //     if let Some(gdk_parent) = gtk::gdk::Window::foreign_new_for_display(&display, parent_xid) {
+    //         // We need a GtkWindow, not GdkWindow. Use set_screen + set_role approach instead.
+    //         // Actually, we can use gdk_window directly:
+    //         window.realize();
+    //         if let Some(gdk_win) = window.get_window() {
+    //             gdk_win.set_transient_for(&gdk_parent);
+    //         }
+    //     }
+    // }
     // Make window transparent via CSS
     let provider = gtk::CssProvider::new();
     provider
@@ -214,12 +227,12 @@ fn show_window(env: &Env) -> Result<Value<'_>> {
                 Event::Best(title) => {
                     //window.set_title(&title);
                     eprintln!("🧣 BEST vent! {:?} and title {:?}", window, title);
-                    let (text_surface, _tw, _th) =
-                        render_text_offscreen("thats me!", "Sans", 24.0);
+                    let (text_surface, _tw, _th) = render_text_offscreen("thats me!", "Sans", 24.0);
                     canvas.replace(text_surface);
                     area.queue_draw();
-                    eprintln!("DRAAAAAAAAAAAAAAAAAAAA");
                     window.queue_draw();
+                    window.move_(110, 10);
+                    eprintln!("mooooooooooooooooooooo");
                 }
             }
         }
