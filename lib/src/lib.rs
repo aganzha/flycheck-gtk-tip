@@ -123,7 +123,9 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
 }
 
 #[defun]
-fn show_window(env: &Env) -> Result<Value<'_>> {
+fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
+    eprintln!(">>>>>>>>>>>>>>>>>>>>> env {:?} value {:?}", env, frame);
+    //let parent = unsafe { gtk::Window::from_glib_none(frame) };
     INIT.call_once(|| {
         let _ = gtk::init();
     });
@@ -143,24 +145,17 @@ fn show_window(env: &Env) -> Result<Value<'_>> {
     let content_h = th as f64 + padding * 2.0;
     let total_h = content_h + arrow_size;
 
-    let window = gtk::Window::new(gtk::WindowType::Popup);
-    window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
+    let window = gtk::Window::builder()
+        .type_(gtk::WindowType::Popup)
+        .type_hint(gtk::gdk::WindowTypeHint::Tooltip)
+        .window_position(gtk::WindowPosition::Mouse)
+        .build();//new(gtk::WindowType::Popup);
+    //window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
     window.set_decorated(false);
     window.set_default_size(content_w as i32, total_h as i32);
     window.set_resizable(false);
     window.set_app_paintable(true);
 
-    // if let Some(display) = gtk::gdk::Display::default() {
-    //     // foreign_new_for_display creates a GdkWindow wrapper around the native window
-    //     if let Some(gdk_parent) = gtk::gdk::Window::foreign_new_for_display(&display, parent_xid) {
-    //         // We need a GtkWindow, not GdkWindow. Use set_screen + set_role approach instead.
-    //         // Actually, we can use gdk_window directly:
-    //         window.realize();
-    //         if let Some(gdk_win) = window.get_window() {
-    //             gdk_win.set_transient_for(&gdk_parent);
-    //         }
-    //     }
-    // }
     // Make window transparent via CSS
     let provider = gtk::CssProvider::new();
     provider
@@ -217,6 +212,7 @@ fn show_window(env: &Env) -> Result<Value<'_>> {
     event_box.add(&area);
     window.add(&event_box);
     window.show_all();
+    eprintln!("screen = {:?}", WidgetExt::screen(&window));
 
     glib::spawn_future_local(async move {
         while let Ok(event) = receiver.recv().await {
