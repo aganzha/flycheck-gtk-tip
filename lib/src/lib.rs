@@ -4,6 +4,7 @@ use emacs::{defun, Env, Result, Value};
 use glib::translate::*;
 use gtk::ffi;
 use gtk::glib;
+use glib::ffi as glib_ffi;
 use gtk::prelude::*;
 use pango::FontDescription;
 use pangocairo;
@@ -259,7 +260,7 @@ fn set_window_title(env: &Env, title: String) -> Result<Value<'_>> {
         // Don't free the list here if you still need the window -
         // from_glib_none increments the refcount, so the window stays alive.
         // aganzha commented out
-        // unsafe { ffi::g_slist_free(list) };
+        unsafe { glib_ffi::g_list_free(list) };
     }
     // cannot cast to win, though pointer works
     // let list = unsafe { ffi::gtk_window_list_toplevels() };
