@@ -1,13 +1,13 @@
 use async_channel::Sender;
 use cairo::{Context, Format, ImageSurface};
 use emacs::{defun, Env, Result, Value};
+use glib::ffi as glib_ffi;
 use glib::translate::*;
 use gtk::ffi;
 use gtk::glib;
-use glib::ffi as glib_ffi;
 use gtk::prelude::*;
 use pango::FontDescription;
-use pangocairo;
+//(module-load (expand-file-name "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so"))
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Once, OnceLock, RwLock};
@@ -25,26 +25,9 @@ fn init(_env: &Env) -> Result<()> {
 
 pub enum Event {
     Test,
-    Best(String),
+    MoveWindow(i32, i32, String),
 }
 
-// fn render_text_offscreen(text: &str, font: &str, size: f64) -> ImageSurface {
-//     let surface = ImageSurface::create(Format::ARgb32, 400, 100).unwrap();
-//     let cr = Context::new(&surface).unwrap();
-
-//     let layout = pangocairo::functions::create_layout(&cr);//.unwrap();
-//     layout.set_text(text);
-//     let desc = FontDescription::from_string(&format!("{} {}", font, size));
-//     layout.set_font_description(Some(&desc));
-
-//     cr.set_source_rgb(1.0, 1.0, 1.0);
-//     cr.paint().unwrap();
-//     cr.set_source_rgb(0.0, 0.0, 0.0);
-//     cr.move_to(10.0, 10.0);
-//     pangocairo::functions::show_layout(&cr, &layout);
-
-//     surface
-// }
 fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, i32, i32) {
     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
     let cr = Context::new(&tmp).unwrap();
@@ -125,19 +108,17 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
     cr.close_path();
 }
 
+//(emacs-gtk3-module-move-window 300 300 "привет!")
 #[defun]
-fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
-    eprintln!(">>>>>>>>>>>>>>>>>>>>> env {:?} value {:?}", env, frame);
-    //let parent = unsafe { gtk::Window::from_glib_none(frame) };
+fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'a>> {
+    eprintln!(">>>>>>>>>>>>>>>>>>>>> env {:?} x {:?} y {:?}", env, x, y);
     INIT.call_once(|| {
         let _ = gtk::init();
     });
     let (sender, receiver) = async_channel::unbounded();
     SENDER.get_or_init(|| RwLock::new(sender.clone()));
 
-    //let win = gtk::Window::new(gtk::WindowType::Toplevel);
-    //win.set_type_hint(gtk::gdk::WindowTypeHint::Popup);
-    let (text_surface, tw, th) = render_text_offscreen("Hello from thread", "Sans", 24.0);
+    let (text_surface, tw, th) = render_text_offscreen(&text, "Sans", 24.0);
     let canvas = Rc::new(RefCell::new(text_surface));
     let padding = 20.0;
     let radius = 12.0;
@@ -154,8 +135,7 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
         .type_(gtk::WindowType::Popup)
         .type_hint(gtk::gdk::WindowTypeHint::Tooltip)
         .window_position(gtk::WindowPosition::Mouse)
-        .build(); //new(gtk::WindowType::Popup);
-    //window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
+        .build();
     window.set_decorated(false);
     window.set_default_size(content_w as i32, total_h as i32);
     window.set_resizable(false);
@@ -163,7 +143,7 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
 
     window.set_transient_for(emacs_window.as_ref());
     eprintln!("‼️................ {:?}", window);
-    window.move_(600, 10);
+    window.move_(x, y);
     // Make window transparent via CSS
     let provider = gtk::CssProvider::new();
     provider
@@ -228,23 +208,23 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
                 Event::Test => {
                     eprintln!("🐦 xtest vent! {:?}", window);
                 }
-                Event::Best(title) => {
+                Event::MoveWindow(x, y, text) => {
                     //window.set_title(&title);
                     eprintln!(
-                        "🧣 BEST event. rust created window = {:?} and title {:?}",
-                        window, title
+                        "🧣 BEST event. rust created window = {:?} and x {} y {}",
+                        window, x, y
                     );
-                    let (text_surface, _tw, _th) = render_text_offscreen("thats me!", "Sans", 24.0);
+                    let (text_surface, _tw, _th) = render_text_offscreen(&text, "Sans", 24.0);
                     canvas.replace(text_surface);
                     area.queue_draw();
                     window.queue_draw();
-                    window.move_(110, 10);
+                    window.move_(x, y);
                     eprintln!("mooooooooooooooooooooo");
                 }
             }
         }
     });
-    Ok(env.intern("t")?)
+    env.intern("t")
 }
 
 fn get_emacs_window() -> Option<gtk::Window> {
@@ -263,30 +243,17 @@ fn get_emacs_window() -> Option<gtk::Window> {
     }
     None
 }
-// ;;(module-load (expand-file-name "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so"))
-// ;;(emacs-gtk3-module-show-window)
-// ;;(emacs-gtk3-module-set-window-title "hey")
 
+
+// (emacs-gtk3-module-move-window 300 300 "привет!")
 #[defun]
-fn set_window_title(env: &Env, title: String) -> Result<Value<'_>> {
-    eprintln!("💨 set_window_title! {:?}", &title);
-    // let list = unsafe { ffi::gtk_window_list_toplevels() };
-    // println!("List pointer: {:p}", list);
-    // if !list.is_null() {
-    //     let first = unsafe { (*list).data };
-    //     println!("🧶 First window pointer: {:?}", first);
-    //     let win = unsafe { gtk::Window::from_glib_none(first as *mut ffi::GtkWindow) };
-    //     println!("🧄 win {:?} title {:?}", win, win.title());
-    //     // Don't free the list here if you still need the window -
-    //     // from_glib_none increments the refcount, so the window stays alive.
-    //     // aganzha commented out
-    //     unsafe { glib_ffi::g_list_free(list) };
-    // }
+fn move_window(env: &Env, x: i32, y: i32, text: String) -> Result<Value<'_>> {
+    eprintln!("💨 move window x {} y {}", x, y);
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
         sender
-            .send_blocking(Event::Best(title))
+            .send_blocking(Event::MoveWindow(x, y, text))
             .expect("cant send through channel");
     }
-    Ok(env.intern("t")?)
+    env.intern("t")
 }
