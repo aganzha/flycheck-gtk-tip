@@ -148,17 +148,21 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
     let content_h = th as f64 + padding * 2.0;
     let total_h = content_h + arrow_size;
 
+    let emacs_window = get_emacs_window();
+    eprintln!("♦️................ {:?}", emacs_window);
     let window = gtk::Window::builder()
         .type_(gtk::WindowType::Popup)
         .type_hint(gtk::gdk::WindowTypeHint::Tooltip)
         .window_position(gtk::WindowPosition::Mouse)
         .build(); //new(gtk::WindowType::Popup);
-                  //window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
+    //window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
     window.set_decorated(false);
     window.set_default_size(content_w as i32, total_h as i32);
     window.set_resizable(false);
     window.set_app_paintable(true);
 
+    window.set_transient_for(emacs_window.as_ref());
+    eprintln!("‼️................ {:?}", window);
     // Make window transparent via CSS
     let provider = gtk::CssProvider::new();
     provider
@@ -242,6 +246,22 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
     Ok(env.intern("t")?)
 }
 
+fn get_emacs_window() -> Option<gtk::Window> {
+    let list = unsafe { ffi::gtk_window_list_toplevels() };
+    println!("List pointer: {:p}", list);
+    if !list.is_null() {
+        let first = unsafe { (*list).data };
+        println!("🧶 First window pointer: {:?}", first);
+        let win = unsafe { gtk::Window::from_glib_none(first as *mut ffi::GtkWindow) };
+        println!("🧄 win {:?} title {:?}", win, win.title());
+        // Don't free the list here if you still need the window -
+        // from_glib_none increments the refcount, so the window stays alive.
+        // aganzha commented out
+        unsafe { glib_ffi::g_list_free(list) };
+        return Some(win);
+    }
+    None
+}
 // ;;(module-load (expand-file-name "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so"))
 // ;;(emacs-gtk3-module-show-window)
 // ;;(emacs-gtk3-module-set-window-title "hey")
@@ -249,34 +269,18 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
 #[defun]
 fn set_window_title(env: &Env, title: String) -> Result<Value<'_>> {
     eprintln!("💨 set_window_title! {:?}", &title);
-
-    let list = unsafe { ffi::gtk_window_list_toplevels() };
-    println!("List pointer: {:p}", list);
-    if !list.is_null() {
-        let first = unsafe { (*list).data };
-        println!("🧶 First window pointer: {:?}", first);
-        let win = unsafe { gtk::Window::from_glib_none(first as *mut ffi::GtkWindow) };
-        println!("🧄 win {:?}", win);
-        // Don't free the list here if you still need the window -
-        // from_glib_none increments the refcount, so the window stays alive.
-        // aganzha commented out
-        unsafe { glib_ffi::g_list_free(list) };
-    }
-    // cannot cast to win, though pointer works
     // let list = unsafe { ffi::gtk_window_list_toplevels() };
-    // println!("🌻 List pointer: {:p}", list);
+    // println!("List pointer: {:p}", list);
     // if !list.is_null() {
     //     let first = unsafe { (*list).data };
-    //     println!("First window pointer: {:?}", first);
-    //     let win = gtk::Window::from_glib_none(first as *mut ffi::GtkWindow);
-    //     //unsafe { ffi::g_slist_free(list) };
+    //     println!("🧶 First window pointer: {:?}", first);
+    //     let win = unsafe { gtk::Window::from_glib_none(first as *mut ffi::GtkWindow) };
+    //     println!("🧄 win {:?} title {:?}", win, win.title());
+    //     // Don't free the list here if you still need the window -
+    //     // from_glib_none increments the refcount, so the window stays alive.
+    //     // aganzha commented out
+    //     unsafe { glib_ffi::g_list_free(list) };
     // }
-
-    // does not work
-    // let slist: glib::collections::SList<*mut ffi::GtkWindow> =
-    //     glib::collections::SList::from_glib_none(list_ptr);
-
-    //println!("🦴 whoooooooooooooooooa {:?}", slist);
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
         sender
