@@ -163,6 +163,7 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
 
     window.set_transient_for(emacs_window.as_ref());
     eprintln!("‼️................ {:?}", window);
+    window.move_(600, 10);
     // Make window transparent via CSS
     let provider = gtk::CssProvider::new();
     provider
