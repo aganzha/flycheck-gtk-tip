@@ -1,6 +1,8 @@
 use async_channel::Sender;
 use cairo::{Context, Format, ImageSurface};
 use emacs::{defun, Env, Result, Value};
+use glib::translate::*;
+use gtk::ffi;
 use gtk::glib;
 use gtk::prelude::*;
 use pango::FontDescription;
@@ -149,8 +151,8 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
         .type_(gtk::WindowType::Popup)
         .type_hint(gtk::gdk::WindowTypeHint::Tooltip)
         .window_position(gtk::WindowPosition::Mouse)
-        .build();//new(gtk::WindowType::Popup);
-    //window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
+        .build(); //new(gtk::WindowType::Popup);
+                  //window.set_type_hint(gtk::gdk::WindowTypeHint::Tooltip);
     window.set_decorated(false);
     window.set_default_size(content_w as i32, total_h as i32);
     window.set_resizable(false);
@@ -222,7 +224,10 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
                 }
                 Event::Best(title) => {
                     //window.set_title(&title);
-                    eprintln!("🧣 BEST vent! {:?} and title {:?}", window, title);
+                    eprintln!(
+                        "🧣 BEST event. rust created window = {:?} and title {:?}",
+                        window, title
+                    );
                     let (text_surface, _tw, _th) = render_text_offscreen("thats me!", "Sans", 24.0);
                     canvas.replace(text_surface);
                     area.queue_draw();
@@ -243,6 +248,34 @@ fn show_window<'a>(env: &'a Env, frame: Value<'a>) -> Result<Value<'a>> {
 #[defun]
 fn set_window_title(env: &Env, title: String) -> Result<Value<'_>> {
     eprintln!("💨 set_window_title! {:?}", &title);
+
+    let list = unsafe { ffi::gtk_window_list_toplevels() };
+    println!("List pointer: {:p}", list);
+    if !list.is_null() {
+        let first = unsafe { (*list).data };
+        println!("🧶 First window pointer: {:?}", first);
+        let win = unsafe { gtk::Window::from_glib_none(first as *mut ffi::GtkWindow) };
+        println!("🧄 win {:?}", win);
+        // Don't free the list here if you still need the window -
+        // from_glib_none increments the refcount, so the window stays alive.
+        // aganzha commented out
+        // unsafe { ffi::g_slist_free(list) };
+    }
+    // cannot cast to win, though pointer works
+    // let list = unsafe { ffi::gtk_window_list_toplevels() };
+    // println!("🌻 List pointer: {:p}", list);
+    // if !list.is_null() {
+    //     let first = unsafe { (*list).data };
+    //     println!("First window pointer: {:?}", first);
+    //     let win = gtk::Window::from_glib_none(first as *mut ffi::GtkWindow);
+    //     //unsafe { ffi::g_slist_free(list) };
+    // }
+
+    // does not work
+    // let slist: glib::collections::SList<*mut ffi::GtkWindow> =
+    //     glib::collections::SList::from_glib_none(list_ptr);
+
+    //println!("🦴 whoooooooooooooooooa {:?}", slist);
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
         sender
