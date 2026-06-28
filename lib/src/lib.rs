@@ -144,24 +144,6 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
     window.set_transient_for(emacs_window.as_ref());
     eprintln!("‼️................ {:?}", window);
     window.move_(x, y);
-    // Make window transparent via CSS
-    let provider = gtk::CssProvider::new();
-    provider
-        .load_from_data(b"window { background: transparent; }")
-        .unwrap();
-    let screen = WidgetExt::screen(&window).unwrap();
-
-    gtk::StyleContext::add_provider_for_screen(
-        &screen,
-        &provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-
-    // EventBox to hold the drawing area, with RGBA visual
-    let event_box = gtk::EventBox::new();
-    event_box.set_visible_window(false); // don't draw its own background
-    let visual = screen.rgba_visual().unwrap();
-    event_box.set_visual(Some(&visual));
 
     let area = gtk::DrawingArea::new();
     area.set_size_request(content_w as i32, total_h as i32);
@@ -197,8 +179,7 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
         }
     });
 
-    event_box.add(&area);
-    window.add(&event_box);
+    window.add(&area);
     window.show_all();
     eprintln!("screen = {:?}", WidgetExt::screen(&window));
 
