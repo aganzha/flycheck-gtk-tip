@@ -18,10 +18,10 @@ static INIT: Once = Once::new();
 
 static SENDER: OnceLock<RwLock<Sender<Event>>> = OnceLock::new();
 
-#[emacs::module(name = "emacs-gtk3-module")]
-fn init(_env: &Env) -> Result<()> {
-    Ok(())
-}
+// #[emacs::module(name = "emacs-gtk3-module")]
+// fn init(_env: &Env) -> Result<()> {
+//     Ok(())
+// }
 
 pub enum Event {
     Test,
@@ -107,8 +107,8 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
     cr.close_path();
 }
 
-//(emacs-gtk3-module-move-window 300 300 "привет!")
-#[defun]
+
+#[emacs::module(name = "emacs-gtk3-module")]
 fn show_window<'a>(env: &'a Env) -> Result<Value<'a>> {
     eprintln!("show window >>>>>>>>>>>>>>>>>>>>> env {:?}", env);
     INIT.call_once(|| {
@@ -117,17 +117,12 @@ fn show_window<'a>(env: &'a Env) -> Result<Value<'a>> {
     let (sender, receiver) = async_channel::unbounded();
     SENDER.get_or_init(|| RwLock::new(sender.clone()));
 
-    //let (text_surface, tw, th) = render_text_offscreen(&text, "Sans", 24.0);
     let text_surface = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
     let canvas = Rc::new(RefCell::new((text_surface, 1.0, 1.0)));
     let padding = 20.0;
     let radius = 12.0;
     let arrow_size = 14.0;
     let arrow_x = 60.0;
-
-    // let content_w = tw as f64 + padding * 2.0;
-    // let content_h = th as f64 + padding * 2.0;
-    // let total_h = content_h + arrow_size;
 
     let emacs_window = get_emacs_window();
     eprintln!("♦️................ {:?}", emacs_window);
