@@ -109,8 +109,7 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
 
 
 #[emacs::module(name = "emacs-gtk3-module")]
-fn show_window<'a>(env: &'a Env) -> Result<Value<'a>> {
-    eprintln!("show window >>>>>>>>>>>>>>>>>>>>> env {:?}", env);
+fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     INIT.call_once(|| {
         let _ = gtk::init();
     });
