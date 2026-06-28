@@ -28,7 +28,7 @@ pub enum Event {
     MoveWindow(i32, i32, String),
 }
 
-fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, i32, i32) {
+fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, f64, f64) {
     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
     let cr = Context::new(&tmp).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
@@ -50,8 +50,7 @@ fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, i3
     cr.set_source_rgb(0.0, 0.0, 0.0);
     cr.move_to(-ink.x() as f64, -ink.y() as f64);
     pangocairo::functions::show_layout(&cr, &layout);
-
-    (surface, w, h)
+    (surface, w as f64, h as f64)
 }
 
 fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
@@ -110,24 +109,25 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
 
 //(emacs-gtk3-module-move-window 300 300 "привет!")
 #[defun]
-fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'a>> {
-    eprintln!(">>>>>>>>>>>>>>>>>>>>> env {:?} x {:?} y {:?}", env, x, y);
+fn show_window<'a>(env: &'a Env) -> Result<Value<'a>> {
+    eprintln!("show window >>>>>>>>>>>>>>>>>>>>> env {:?}", env);
     INIT.call_once(|| {
         let _ = gtk::init();
     });
     let (sender, receiver) = async_channel::unbounded();
     SENDER.get_or_init(|| RwLock::new(sender.clone()));
 
-    let (text_surface, tw, th) = render_text_offscreen(&text, "Sans", 24.0);
-    let canvas = Rc::new(RefCell::new(text_surface));
+    //let (text_surface, tw, th) = render_text_offscreen(&text, "Sans", 24.0);
+    let text_surface = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
+    let canvas = Rc::new(RefCell::new((text_surface, 1.0, 1.0)));
     let padding = 20.0;
     let radius = 12.0;
     let arrow_size = 14.0;
     let arrow_x = 60.0;
 
-    let content_w = tw as f64 + padding * 2.0;
-    let content_h = th as f64 + padding * 2.0;
-    let total_h = content_h + arrow_size;
+    // let content_w = tw as f64 + padding * 2.0;
+    // let content_h = th as f64 + padding * 2.0;
+    // let total_h = content_h + arrow_size;
 
     let emacs_window = get_emacs_window();
     eprintln!("♦️................ {:?}", emacs_window);
@@ -137,19 +137,20 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
         .window_position(gtk::WindowPosition::Mouse)
         .build();
     window.set_decorated(false);
-    window.set_default_size(content_w as i32, total_h as i32);
-    window.set_resizable(false);
+    //window.set_default_size(content_w as i32, total_h as i32);
+    window.set_resizable(true);
     window.set_app_paintable(true);
 
     window.set_transient_for(emacs_window.as_ref());
     eprintln!("‼️................ {:?}", window);
-    window.move_(x, y);
+    window.move_(0, 0);
 
     let area = gtk::DrawingArea::new();
-    area.set_size_request(content_w as i32, total_h as i32);
+    //area.set_size_request(content_w as i32, total_h as i32);
 
     area.connect_draw({
         let canvas = canvas.clone();
+        let window = window.clone();
         move |_, cr| {
             // Clear to transparent
             cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
@@ -157,8 +158,13 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
             cr.paint().unwrap();
             cr.set_operator(cairo::Operator::Over); // restore default
 
+            let (ref text_surface, tw, th) = *canvas.borrow();
+            let content_w = tw + padding * 2.0;
+            let content_h = th + padding * 2.0;
+            eprintln!("♦️ >>>>>>>>>>>>>>>> tw {} th {}", content_w, content_h);
+            window.resize(content_w as i32, content_h as i32);
             // Draw the popover shape
-            draw_popover_shape(cr, content_w, total_h, arrow_x, radius, arrow_size);
+            draw_popover_shape(cr, content_w, content_h, arrow_x, radius, arrow_size);
 
             // Fill shape
             cr.set_source_rgb(0.95, 0.95, 0.95);
@@ -169,7 +175,6 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
             cr.set_line_width(1.0);
             cr.stroke().unwrap();
 
-            let text_surface = canvas.borrow();
             // Draw the text on top
             cr.set_source_surface(&*text_surface, padding, padding + arrow_size)
                 .unwrap();
@@ -180,7 +185,7 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
     });
 
     window.add(&area);
-    window.show_all();
+    //window.show_all();
     eprintln!("screen = {:?}", WidgetExt::screen(&window));
 
     glib::spawn_future_local(async move {
@@ -195,8 +200,9 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
                         "🧣 BEST event. rust created window = {:?} and x {} y {}",
                         window, x, y
                     );
-                    let (text_surface, _tw, _th) = render_text_offscreen(&text, "Sans", 24.0);
-                    canvas.replace(text_surface);
+                    let (text_surface, tw, th) = render_text_offscreen(&text, "Sans", 24.0);
+                    canvas.replace((text_surface, tw, th));
+                    window.show_all();
                     area.queue_draw();
                     window.set_opacity(0.5);
                     window.queue_draw();
