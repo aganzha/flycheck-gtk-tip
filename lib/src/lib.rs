@@ -18,44 +18,76 @@ static INIT: Once = Once::new();
 
 static SENDER: OnceLock<RwLock<Sender<Event>>> = OnceLock::new();
 
-// #[emacs::module(name = "emacs-gtk3-module")]
-// fn init(_env: &Env) -> Result<()> {
-//     Ok(())
-// }
-
-pub enum Event {
-    Test,
-    MoveWindow(i32, i32, String),
+#[derive(Debug, Clone)]
+pub struct Tip {
+    pub text: String,
+    pub x: i32,
+    pub y: i32,
+    pub font: String,
+    pub font_size: i32,
 }
 
-fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, f64, f64) {
+pub enum Event {
+    HideTip,
+    ShowTip(Tip),
+}
+
+fn render_text_offscreen(text: &str, font: &str, size: f64, max_width: i32) -> (ImageSurface, f64, f64) {
     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
     let cr = Context::new(&tmp).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
     layout.set_text(text);
     let desc = FontDescription::from_string(&format!("{} {}", font, size));
     layout.set_font_description(Some(&desc));
-    let (ink, _logical) = layout.pixel_extents();
-    let w = ink.width();
-    let h = ink.height();
+    layout.set_width(pango::SCALE * max_width); // <-- set width here too
+
+    let (w, h) = layout.pixel_size(); // <-- use pixel_size, not pixel_extents
 
     let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
     let cr = Context::new(&surface).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
     layout.set_text(text);
     layout.set_font_description(Some(&desc));
+    layout.set_width(pango::SCALE * max_width); // <-- and here
 
     cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
     cr.paint().unwrap();
     cr.set_source_rgb(0.0, 0.0, 0.0);
-    cr.move_to(-ink.x() as f64, -ink.y() as f64);
+    cr.move_to(0.0, 0.0);
     pangocairo::functions::show_layout(&cr, &layout);
+
     (surface, w as f64, h as f64)
 }
+// fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, f64, f64) {
+//     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
+//     let cr = Context::new(&tmp).unwrap();
+//     let layout = pangocairo::functions::create_layout(&cr);
+//     layout.set_width(pango::SCALE * 300);
+//     layout.set_text(text);
+//     let desc = FontDescription::from_string(&format!("{} {}", font, size));
+//     layout.set_font_description(Some(&desc));
+//     let (ink, _logical) = layout.pixel_extents();
+//     let w = ink.width();
+//     let h = ink.height();
+
+//     let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
+//     let cr = Context::new(&surface).unwrap();
+//     let layout = pangocairo::functions::create_layout(&cr);
+//     layout.set_text(text);
+//     layout.set_font_description(Some(&desc));
+
+//     cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+//     cr.paint().unwrap();
+//     cr.set_source_rgb(0.0, 0.0, 0.0);
+//     cr.move_to(-ink.x() as f64, -ink.y() as f64);
+//     pangocairo::functions::show_layout(&cr, &layout);
+//     (surface, w as f64, h as f64)
+// }
 
 fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
     let arrow_half = arrow_size / 2.0;
 
+    // i want arrow to point exactly at cursor.
     cr.new_path();
     // Start at top-left + radius, shifted down by arrow_size
     cr.move_to(radius, arrow_size);
@@ -106,7 +138,6 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
     );
     cr.close_path();
 }
-
 
 #[emacs::module(name = "emacs-gtk3-module")]
 fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
@@ -185,22 +216,26 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     glib::spawn_future_local(async move {
         while let Ok(event) = receiver.recv().await {
             match event {
-                Event::Test => {
-                    eprintln!("🐦 xtest vent! {:?}", window);
+                Event::HideTip => {
+                    eprintln!("🐦 hide! {:?}", window.hide());
                 }
-                Event::MoveWindow(x, y, text) => {
+                Event::ShowTip(tip) => {
                     //window.set_title(&title);
                     eprintln!(
-                        "🧣 BEST event. rust created window = {:?} and x {} y {}",
-                        window, x, y
+                        "🧣 BEST event. rust created window = {:?} and tip {:?}",
+                        window, tip
                     );
-                    let (text_surface, tw, th) = render_text_offscreen(&text, "Sans", 24.0);
+                    let (text_surface, tw, th) =
+                        render_text_offscreen(&tip.text, &tip.font, tip.font_size as f64, 300);
                     canvas.replace((text_surface, tw, th));
                     window.show_all();
                     area.queue_draw();
                     window.set_opacity(0.5);
                     window.queue_draw();
-                    window.move_(x, y);
+                    window.move_(
+                        (tip.x as f64 - arrow_x) as i32,
+                        (tip.y as f64 + radius + arrow_size*2.0 + padding) as i32,
+                    );
                     glib::timeout_add_local(std::time::Duration::from_millis(16), {
                         let target = window.clone();
                         move || {
@@ -239,12 +274,35 @@ fn get_emacs_window() -> Option<gtk::Window> {
 
 // (emacs-gtk3-module-move-window 300 300 "привет!")
 #[defun]
-fn move_window(env: &Env, x: i32, y: i32, text: String) -> Result<Value<'_>> {
+fn show_tip(
+    env: &Env,
+    x: i32,
+    y: i32,
+    text: String,
+    font: String,
+    font_size: i32,
+) -> Result<Value<'_>> {
     eprintln!("💨 move window x {} y {}", x, y);
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
         sender
-            .send_blocking(Event::MoveWindow(x, y, text))
+            .send_blocking(Event::ShowTip(Tip {
+                x,
+                y,
+                text,
+                font,
+                font_size,
+            }))
+            .expect("cant send through channel");
+    }
+    env.intern("t")
+}
+#[defun]
+fn hide_tip(env: &Env) -> Result<Value<'_>> {
+    if let Some(lock) = SENDER.get() {
+        let sender = lock.read().unwrap();
+        sender
+            .send_blocking(Event::HideTip)
             .expect("cant send through channel");
     }
     env.intern("t")
