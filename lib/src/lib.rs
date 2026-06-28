@@ -217,8 +217,20 @@ fn show_window<'a>(env: &'a Env, x: i32, y: i32, text: String) -> Result<Value<'
                     let (text_surface, _tw, _th) = render_text_offscreen(&text, "Sans", 24.0);
                     canvas.replace(text_surface);
                     area.queue_draw();
+                    window.set_opacity(0.5);
                     window.queue_draw();
                     window.move_(x, y);
+                    glib::timeout_add_local(std::time::Duration::from_millis(16), {
+                        let target = window.clone();
+                        move || {
+                            let opacity = target.opacity();
+                            if opacity < 1.0 {
+                                target.set_opacity((opacity + 0.05).min(1.0));
+                                return glib::ControlFlow::Continue;
+                            }
+                            glib::ControlFlow::Break
+                        }
+                    });
                     eprintln!("mooooooooooooooooooooo");
                 }
             }
@@ -243,7 +255,6 @@ fn get_emacs_window() -> Option<gtk::Window> {
     }
     None
 }
-
 
 // (emacs-gtk3-module-move-window 300 300 "привет!")
 #[defun]

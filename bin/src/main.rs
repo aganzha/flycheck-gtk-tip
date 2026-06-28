@@ -1,5 +1,6 @@
 use cairo::{Context, Format, ImageSurface};
 use gtk::prelude::*;
+use gtk::glib;
 use pango::FontDescription;
 use pangocairo;
 
@@ -152,8 +153,19 @@ fn main() {
         gtk::glib::signal::Propagation::Stop
     });
 
+    window.set_opacity(0.5);
+
     event_box.add(&area);
     window.add(&event_box);
     window.show_all();
+    let target = window.clone();
+    glib::timeout_add_local(std::time::Duration::from_millis(16), move || {
+        let opacity = target.opacity();
+        if opacity < 1.0 {
+            target.set_opacity((opacity + 0.05).min(1.0));
+            return glib::ControlFlow::Continue;
+        }
+        glib::ControlFlow::Break
+    });
     gtk::main();
 }
