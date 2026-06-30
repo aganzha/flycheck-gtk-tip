@@ -167,15 +167,6 @@ fn main() {
     let dx = 0.0; // like css shadow offset-x
     let dy = 10.0; // like css shadow offset-y
 
-    let content_w = tw as f64 + padding * 2.0;
-    let content_h = th as f64 + padding * 2.0;
-    let total_h = content_h + arrow_size;
-
-    // grow drawing area to fit shadow
-    // let area_w = (content_w + 2.0 * shadow_pad) as i32;
-    // let area_h = (total_h + 2.0 * shadow_pad) as i32;
-
-    //area.set_size_request(area_w, area_h);
 
     area.connect_draw({
         let area = area.clone();
