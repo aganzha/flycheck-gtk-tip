@@ -55,94 +55,16 @@ fn render_text_offscreen(
     layout.set_font_description(Some(&desc));
     layout.set_width(pango::SCALE * max_width); // <-- and here
 
-    cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-    cr.paint().unwrap();
-    cr.set_source_rgb(0.0, 0.0, 0.0);
+    // what it was???
+    // same foreground color as in main view
+    //cr.set_source_rgba(1.0, 1.0, 1.0, 0.0);
+    //cr.paint().unwrap();
+    cr.set_source_rgb(1.0, 1.0, 1.0);
     cr.move_to(0.0, 0.0);
     pangocairo::functions::show_layout(&cr, &layout);
 
     (surface, w as f64, h as f64)
 }
-// fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, f64, f64) {
-//     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
-//     let cr = Context::new(&tmp).unwrap();
-//     let layout = pangocairo::functions::create_layout(&cr);
-//     layout.set_width(pango::SCALE * 300);
-//     layout.set_text(text);
-//     let desc = FontDescription::from_string(&format!("{} {}", font, size));
-//     layout.set_font_description(Some(&desc));
-//     let (ink, _logical) = layout.pixel_extents();
-//     let w = ink.width();
-//     let h = ink.height();
-
-//     let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
-//     let cr = Context::new(&surface).unwrap();
-//     let layout = pangocairo::functions::create_layout(&cr);
-//     layout.set_text(text);
-//     layout.set_font_description(Some(&desc));
-
-//     cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-//     cr.paint().unwrap();
-//     cr.set_source_rgb(0.0, 0.0, 0.0);
-//     cr.move_to(-ink.x() as f64, -ink.y() as f64);
-//     pangocairo::functions::show_layout(&cr, &layout);
-//     (surface, w as f64, h as f64)
-// }
-
-// fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
-//     let arrow_half = arrow_size / 2.0;
-
-//     // i want arrow to point exactly at cursor.
-//     cr.new_path();
-//     // Start at top-left + radius, shifted down by arrow_size
-//     cr.move_to(radius, arrow_size);
-//     // Top edge to arrow start
-//     cr.line_to(arrow_x - arrow_half, arrow_size);
-//     // Arrow pointing up (triangle) - tip at y=0
-//     cr.line_to(arrow_x, 0.0);
-//     cr.line_to(arrow_x + arrow_half, arrow_size);
-//     // Continue top edge to right-radius
-//     cr.line_to(w - radius, arrow_size);
-//     // Top-right corner
-//     cr.arc(
-//         w - radius,
-//         arrow_size + radius,
-//         radius,
-//         -std::f64::consts::FRAC_PI_2,
-//         0.0,
-//     );
-//     // Right edge
-//     cr.line_to(w, h - radius);
-//     // Bottom-right corner
-//     cr.arc(
-//         w - radius,
-//         h - radius,
-//         radius,
-//         0.0,
-//         std::f64::consts::FRAC_PI_2,
-//     );
-//     // Bottom edge
-//     cr.line_to(radius, h);
-//     // Bottom-left corner
-//     cr.arc(
-//         radius,
-//         h - radius,
-//         radius,
-//         std::f64::consts::FRAC_PI_2,
-//         std::f64::consts::PI,
-//     );
-//     // Left edge
-//     cr.line_to(0.0, arrow_size + radius);
-//     // Top-left corner
-//     cr.arc(
-//         radius,
-//         arrow_size + radius,
-//         radius,
-//         std::f64::consts::PI,
-//         std::f64::consts::PI * 1.5,
-//     );
-//     cr.close_path();
-// }
 
 fn build_popover_path(
     cr: &cairo::Context,
@@ -242,12 +164,12 @@ fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, 
     //println!("🧄 draw_popover");
     build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
 
-    // example fill
-    cr.set_source_rgb(1.0, 1.0, 1.0);
+    // fill with same background as main window!
+    cr.set_source_rgb(0.17, 0.21, 0.26);
     cr.fill_preserve();
 
-    // example outline (optional)
-    cr.set_source_rgba(0.0, 0.0, 0.0, 0.05);
+    // final thin outline
+    cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
     cr.set_line_width(1.0);
     cr.stroke();
 }
