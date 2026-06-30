@@ -91,7 +91,7 @@ fn draw_shadow(
 
         cr.save();
         cr.translate(dx - pad, dy - pad); // keep it visually aligned while inflating
-        cr.set_source_rgba(0.0, 0.0, 0.0, alpha);
+        cr.set_source_rgba(1.0, 1.0, 1.0, alpha);
         build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
         cr.fill();
         cr.restore();
@@ -103,11 +103,11 @@ fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, 
     build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
 
     // example fill
-    cr.set_source_rgb(1.0, 1.0, 1.0);
+    cr.set_source_rgb(0.0, 0.0, 0.0);
     cr.fill_preserve();
 
     // example outline (optional)
-    cr.set_source_rgba(0.0, 0.0, 0.0, 0.05);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.05);
     cr.set_line_width(1.0);
     cr.stroke();
 }
@@ -129,9 +129,9 @@ fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, i3
     layout.set_text(text);
     layout.set_font_description(Some(&desc));
 
-    cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.0);
     cr.paint().unwrap();
-    cr.set_source_rgb(0.0, 0.0, 0.0);
+    cr.set_source_rgb(1.0, 1.0, 1.0);
     cr.move_to(-ink.x() as f64, -ink.y() as f64);
     pangocairo::functions::show_layout(&cr, &layout);
 
