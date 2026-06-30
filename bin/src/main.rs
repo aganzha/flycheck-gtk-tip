@@ -1,8 +1,116 @@
 use cairo::{Context, Format, ImageSurface};
-use gtk::prelude::*;
 use gtk::glib;
+use gtk::prelude::*;
 use pango::FontDescription;
 use pangocairo;
+
+fn build_popover_path(
+    cr: &cairo::Context,
+    w: f64,
+    h: f64,
+    arrow_x: f64,
+    radius: f64,
+    arrow_size: f64,
+) {
+    let arrow_half = arrow_size / 2.0;
+
+    cr.new_path();
+    cr.move_to(radius, arrow_size);
+    cr.line_to(arrow_x - arrow_half, arrow_size);
+    cr.line_to(arrow_x, 0.0);
+    cr.line_to(arrow_x + arrow_half, arrow_size);
+    cr.line_to(w - radius, arrow_size);
+
+    cr.arc(
+        w - radius,
+        arrow_size + radius,
+        radius,
+        -std::f64::consts::FRAC_PI_2,
+        0.0,
+    );
+
+    cr.line_to(w, h - radius);
+    cr.arc(
+        w - radius,
+        h - radius,
+        radius,
+        0.0,
+        std::f64::consts::FRAC_PI_2,
+    );
+
+    cr.line_to(radius, h);
+    cr.arc(
+        radius,
+        h - radius,
+        radius,
+        std::f64::consts::FRAC_PI_2,
+        std::f64::consts::PI,
+    );
+
+    cr.line_to(0.0, arrow_size + radius);
+
+    cr.arc(
+        radius,
+        arrow_size + radius,
+        radius,
+        std::f64::consts::PI,
+        std::f64::consts::PI * 1.5,
+    );
+
+    cr.close_path();
+}
+
+fn draw_shadow(
+    cr: &cairo::Context,
+    w: f64,
+    h: f64,
+    arrow_x: f64,
+    radius: f64,
+    arrow_size: f64,
+    padding: f64, // overall shadow spread
+    steps: usize, // blur smoothness
+    dx: f64,
+    dy: f64, // shadow offset (like box-shadow)
+) {
+    // shadow color: black with varying alpha
+    // (you can change this to match your design)
+    for i in 0..steps {
+        let t = i as f64 / (steps as f64 - 1.0); // 0..1
+        let k = 1.0 + t * (padding / radius.max(1.0)); // scale-like inflation
+
+        // simpler “inflation” that often looks good:
+        let pad = t * padding;
+
+        let w2 = w + 2.0 * pad;
+        let h2 = h + 2.0 * pad;
+        let r2 = (radius + pad).max(0.0);
+        let a2 = (arrow_size + pad).max(0.0);
+        let arrow_x2 = arrow_x + pad;
+
+        let alpha = (1.0 - t).powi(2) * 0.35; // tweak to taste
+
+        cr.save();
+        cr.translate(dx - pad, dy - pad); // keep it visually aligned while inflating
+        cr.set_source_rgba(0.0, 0.0, 0.0, alpha);
+        build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
+        cr.fill();
+        cr.restore();
+    }
+}
+
+fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
+    println!("🧄 gooooooooooooooooooooooooooooo");
+    build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
+
+    // example fill
+    cr.set_source_rgb(1.0, 1.0, 1.0);
+    cr.fill_preserve();
+
+    // example outline (optional)
+    cr.set_source_rgba(0.0, 0.0, 0.0, 0.05);
+    cr.set_line_width(1.0);
+    cr.stroke();
+}
 
 fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, i32, i32) {
     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
@@ -30,60 +138,6 @@ fn render_text_offscreen(text: &str, font: &str, size: f64) -> (ImageSurface, i3
     (surface, w, h)
 }
 
-fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
-    let arrow_half = arrow_size / 2.0;
-
-    cr.new_path();
-    // Start at top-left + radius, shifted down by arrow_size
-    cr.move_to(radius, arrow_size);
-    // Top edge to arrow start
-    cr.line_to(arrow_x - arrow_half, arrow_size);
-    // Arrow pointing up (triangle) - tip at y=0
-    cr.line_to(arrow_x, 0.0);
-    cr.line_to(arrow_x + arrow_half, arrow_size);
-    // Continue top edge to right-radius
-    cr.line_to(w - radius, arrow_size);
-    // Top-right corner
-    cr.arc(
-        w - radius,
-        arrow_size + radius,
-        radius,
-        -std::f64::consts::FRAC_PI_2,
-        0.0,
-    );
-    // Right edge
-    cr.line_to(w, h - radius);
-    // Bottom-right corner
-    cr.arc(
-        w - radius,
-        h - radius,
-        radius,
-        0.0,
-        std::f64::consts::FRAC_PI_2,
-    );
-    // Bottom edge
-    cr.line_to(radius, h);
-    // Bottom-left corner
-    cr.arc(
-        radius,
-        h - radius,
-        radius,
-        std::f64::consts::FRAC_PI_2,
-        std::f64::consts::PI,
-    );
-    // Left edge
-    cr.line_to(0.0, arrow_size + radius);
-    // Top-left corner
-    cr.arc(
-        radius,
-        arrow_size + radius,
-        radius,
-        std::f64::consts::PI,
-        std::f64::consts::PI * 1.5,
-    );
-    cr.close_path();
-}
-
 fn main() {
     gtk::init().unwrap();
 
@@ -107,32 +161,113 @@ fn main() {
     let area = gtk::DrawingArea::new();
     area.set_size_request(content_w as i32, total_h as i32);
 
-    area.connect_draw(move |_, cr| {
-        // Clear to transparent
-        cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-        cr.set_operator(cairo::Operator::Source);
-        cr.paint().unwrap();
-        cr.set_operator(cairo::Operator::Over); // restore default
+    // choose shadow parameters
+    let shadow_pad = 24.0;
+    let shadow_steps = 10;
+    let dx = 0.0; // like css shadow offset-x
+    let dy = 10.0; // like css shadow offset-y
 
-        // Draw the popover shape
-        draw_popover_shape(cr, content_w, total_h, arrow_x, radius, arrow_size);
+    let content_w = tw as f64 + padding * 2.0;
+    let content_h = th as f64 + padding * 2.0;
+    let total_h = content_h + arrow_size;
 
-        // Fill shape
-        cr.set_source_rgb(0.95, 0.95, 0.95);
-        cr.fill_preserve().unwrap();
+    // grow drawing area to fit shadow
+    let area_w = (content_w + 2.0 * shadow_pad) as i32;
+    let area_h = (total_h + 2.0 * shadow_pad) as i32;
 
-        // Stroke shape outline
-        cr.set_source_rgb(0.7, 0.7, 0.7);
-        cr.set_line_width(1.0);
-        cr.stroke().unwrap();
+    area.set_size_request(area_w, area_h);
 
-        // Draw the text on top
-        cr.set_source_surface(&text_surface, padding, padding + arrow_size)
+    area.connect_draw({
+        let area = area.clone();
+        move |_, cr| {
+        let w = area.allocated_width() as i32;
+        let h = area.allocated_height() as i32;
+
+        // offscreen: ARGB so alpha shadow works
+        let surf = cairo::ImageSurface::create(cairo::Format::ARgb32, w, h).unwrap();
+        let s_cr = cairo::Context::new(&surf).unwrap();
+
+        // clear offscreen to transparent
+        s_cr.set_operator(cairo::Operator::Source);
+        s_cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+        s_cr.paint().unwrap();
+        s_cr.set_operator(cairo::Operator::Over);
+
+        // translate so the shadow isn’t clipped by widget bounds
+        s_cr.translate(shadow_pad, shadow_pad);
+
+        // shadow
+        draw_shadow(
+            &s_cr,
+            content_w,
+            total_h,
+            arrow_x,
+            radius,
+            arrow_size,
+            shadow_pad,
+            shadow_steps,
+            dx,
+            dy,
+        );
+
+        // popover
+        draw_popover(&s_cr, content_w, total_h, arrow_x, radius, arrow_size);
+
+        s_cr.set_source_rgb(0.95, 0.95, 0.95);
+        s_cr.fill_preserve().unwrap();
+
+        s_cr.set_source_rgb(0.7, 0.7, 0.7);
+        s_cr.set_line_width(1.0);
+        s_cr.stroke().unwrap();
+
+        s_cr.set_source_surface(&text_surface, padding, padding + arrow_size)
             .unwrap();
+        s_cr.paint().unwrap();
+
+        // finally paint to real cairo context
+        cr.set_operator(cairo::Operator::Source);
+        cr.set_source_surface(&surf, 0.0, 0.0).unwrap();
         cr.paint().unwrap();
 
         gtk::glib::signal::Propagation::Stop
-    });
+        }});
+
+    // let window = gtk::Window::new(gtk::WindowType::Toplevel);
+    // window.set_decorated(true);
+    // window.set_default_size((content_w * 2.0) as i32, (total_h * 2.0) as i32);
+    // window.set_resizable(false);
+    // window.set_app_paintable(true);
+
+    // let area = gtk::DrawingArea::new();
+    // area.set_size_request(content_w as i32, total_h as i32);
+
+    // area.connect_draw(move |_, cr| {
+    //     // Clear to transparent
+    //     cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+    //     cr.set_operator(cairo::Operator::Source);
+    //     cr.paint().unwrap();
+    //     cr.set_operator(cairo::Operator::Over); // restore default
+
+    //     // Draw the popover shape
+    //     // was draw_popover_shape
+    //     draw_popover(cr, content_w, total_h, arrow_x, radius, arrow_size);
+
+    //     // Fill shape
+    //     cr.set_source_rgb(0.95, 0.95, 0.95);
+    //     cr.fill_preserve().unwrap();
+
+    //     // Stroke shape outline
+    //     cr.set_source_rgb(0.7, 0.7, 0.7);
+    //     cr.set_line_width(1.0);
+    //     cr.stroke().unwrap();
+
+    //     // Draw the text on top
+    //     cr.set_source_surface(&text_surface, padding, padding + arrow_size)
+    //         .unwrap();
+    //     cr.paint().unwrap();
+
+    //     gtk::glib::signal::Propagation::Stop
+    // });
 
     window.add(&area);
     window.show_all();
