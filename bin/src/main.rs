@@ -76,7 +76,7 @@ fn draw_shadow(
     // (you can change this to match your design)
     for i in 0..steps {
         let t = i as f64 / (steps as f64 - 1.0); // 0..1
-        let k = 1.0 + t * (padding / radius.max(1.0)); // scale-like inflation
+        //let k = 1.0 + t * (padding / radius.max(1.0)); // scale-like inflation
 
         // simpler “inflation” that often looks good:
         let pad = t * padding;
@@ -91,7 +91,7 @@ fn draw_shadow(
 
         cr.save();
         cr.translate(dx - pad, dy - pad); // keep it visually aligned while inflating
-        cr.set_source_rgba(1.0, 1.0, 1.0, alpha);
+        cr.set_source_rgba(0.0, 0.0, 0.0, alpha);
         build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
         cr.fill();
         cr.restore();
@@ -102,12 +102,12 @@ fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, 
     println!("🧄 gooooooooooooooooooooooooooooo");
     build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
 
-    // example fill
-    cr.set_source_rgb(0.0, 0.0, 0.0);
+    //example fill
+    cr.set_source_rgb(0.11, 0.11, 0.12);
     cr.fill_preserve();
 
-    // example outline (optional)
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.05);
+    //example outline (optional)
+    cr.set_source_rgba(0.0, 0.0, 0.0, 1.00);
     cr.set_line_width(1.0);
     cr.stroke();
 }
