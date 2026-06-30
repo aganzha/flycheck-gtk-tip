@@ -89,21 +89,78 @@ fn render_text_offscreen(
 //     (surface, w as f64, h as f64)
 // }
 
-fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
+// fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
+//     let arrow_half = arrow_size / 2.0;
+
+//     // i want arrow to point exactly at cursor.
+//     cr.new_path();
+//     // Start at top-left + radius, shifted down by arrow_size
+//     cr.move_to(radius, arrow_size);
+//     // Top edge to arrow start
+//     cr.line_to(arrow_x - arrow_half, arrow_size);
+//     // Arrow pointing up (triangle) - tip at y=0
+//     cr.line_to(arrow_x, 0.0);
+//     cr.line_to(arrow_x + arrow_half, arrow_size);
+//     // Continue top edge to right-radius
+//     cr.line_to(w - radius, arrow_size);
+//     // Top-right corner
+//     cr.arc(
+//         w - radius,
+//         arrow_size + radius,
+//         radius,
+//         -std::f64::consts::FRAC_PI_2,
+//         0.0,
+//     );
+//     // Right edge
+//     cr.line_to(w, h - radius);
+//     // Bottom-right corner
+//     cr.arc(
+//         w - radius,
+//         h - radius,
+//         radius,
+//         0.0,
+//         std::f64::consts::FRAC_PI_2,
+//     );
+//     // Bottom edge
+//     cr.line_to(radius, h);
+//     // Bottom-left corner
+//     cr.arc(
+//         radius,
+//         h - radius,
+//         radius,
+//         std::f64::consts::FRAC_PI_2,
+//         std::f64::consts::PI,
+//     );
+//     // Left edge
+//     cr.line_to(0.0, arrow_size + radius);
+//     // Top-left corner
+//     cr.arc(
+//         radius,
+//         arrow_size + radius,
+//         radius,
+//         std::f64::consts::PI,
+//         std::f64::consts::PI * 1.5,
+//     );
+//     cr.close_path();
+// }
+
+fn build_popover_path(
+    cr: &cairo::Context,
+    w: f64,
+    h: f64,
+    arrow_x: f64,
+    radius: f64,
+    arrow_size: f64,
+) {
     let arrow_half = arrow_size / 2.0;
 
-    // i want arrow to point exactly at cursor.
     cr.new_path();
-    // Start at top-left + radius, shifted down by arrow_size
     cr.move_to(radius, arrow_size);
-    // Top edge to arrow start
     cr.line_to(arrow_x - arrow_half, arrow_size);
-    // Arrow pointing up (triangle) - tip at y=0
     cr.line_to(arrow_x, 0.0);
     cr.line_to(arrow_x + arrow_half, arrow_size);
-    // Continue top edge to right-radius
     cr.line_to(w - radius, arrow_size);
-    // Top-right corner
+
     cr.arc(
         w - radius,
         arrow_size + radius,
@@ -111,9 +168,8 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
         -std::f64::consts::FRAC_PI_2,
         0.0,
     );
-    // Right edge
+
     cr.line_to(w, h - radius);
-    // Bottom-right corner
     cr.arc(
         w - radius,
         h - radius,
@@ -121,9 +177,8 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
         0.0,
         std::f64::consts::FRAC_PI_2,
     );
-    // Bottom edge
+
     cr.line_to(radius, h);
-    // Bottom-left corner
     cr.arc(
         radius,
         h - radius,
@@ -131,9 +186,9 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
         std::f64::consts::FRAC_PI_2,
         std::f64::consts::PI,
     );
-    // Left edge
+
     cr.line_to(0.0, arrow_size + radius);
-    // Top-left corner
+
     cr.arc(
         radius,
         arrow_size + radius,
@@ -141,7 +196,60 @@ fn draw_popover_shape(cr: &Context, w: f64, h: f64, arrow_x: f64, radius: f64, a
         std::f64::consts::PI,
         std::f64::consts::PI * 1.5,
     );
+
     cr.close_path();
+}
+
+fn draw_shadow(
+    cr: &cairo::Context,
+    w: f64,
+    h: f64,
+    arrow_x: f64,
+    radius: f64,
+    arrow_size: f64,
+    padding: f64, // overall shadow spread
+    steps: usize, // blur smoothness
+    dx: f64,
+    dy: f64, // shadow offset (like box-shadow)
+) {
+    // shadow color: black with varying alpha
+    // (you can change this to match your design)
+    for i in 0..steps {
+        let t = i as f64 / (steps as f64 - 1.0); // 0..1
+                                                 //let k = 1.0 + t * (padding / radius.max(1.0)); // scale-like inflation
+
+        // simpler “inflation” that often looks good:
+        let pad = t * padding;
+
+        let w2 = w + 2.0 * pad;
+        let h2 = h + 2.0 * pad;
+        let r2 = (radius + pad).max(0.0);
+        let a2 = (arrow_size + pad).max(0.0);
+        let arrow_x2 = arrow_x + pad;
+
+        let alpha = (1.0 - t).powi(2) * 0.35; // tweak to taste
+
+        cr.save();
+        cr.translate(dx - pad, dy - pad); // keep it visually aligned while inflating
+        cr.set_source_rgba(0.0, 0.0, 0.0, alpha);
+        build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
+        cr.fill();
+        cr.restore();
+    }
+}
+
+fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
+    //println!("🧄 draw_popover");
+    build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
+
+    // example fill
+    cr.set_source_rgb(1.0, 1.0, 1.0);
+    cr.fill_preserve();
+
+    // example outline (optional)
+    cr.set_source_rgba(0.0, 0.0, 0.0, 0.05);
+    cr.set_line_width(1.0);
+    cr.stroke();
 }
 
 #[emacs::module(name = "emacs-gtk3-module")]
@@ -192,9 +300,32 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
             let content_w = tw + padding * 2.0;
             let content_h = th + padding * 2.0;
             eprintln!("♦️ >>>>>>>>>>>>>>>> tw {} th {}", content_w, content_h);
-            window.resize(content_w as i32, content_h as i32);
-            // Draw the popover shape
-            draw_popover_shape(cr, content_w, content_h, arrow_x, radius, arrow_size);
+
+            // choose shadow parameters
+            let shadow_pad = 24.0;
+            let shadow_steps = 10;
+            let dx = 0.0; // like css shadow offset-x
+            let dy = 10.0; // like css shadow offset-y
+
+            cr.translate(shadow_pad, shadow_pad);
+
+            // shadow
+            draw_shadow(
+                &cr,
+                content_w,
+                content_h,
+                arrow_x,
+                radius,
+                arrow_size,
+                shadow_pad,
+                shadow_steps,
+                dx,
+                dy,
+            );
+
+            window.resize((content_w + shadow_pad*3.0) as i32, (content_h + shadow_pad*3.0) as i32);
+            // was draw_popover_shape
+            draw_popover(cr, content_w, content_h, arrow_x, radius, arrow_size);
 
             // Fill shape
             cr.set_source_rgb(0.95, 0.95, 0.95);
@@ -215,8 +346,6 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     });
 
     window.add(&area);
-    //window.show_all();
-    eprintln!("screen = {:?}", WidgetExt::screen(&window));
 
     glib::spawn_future_local(async move {
         while let Ok(event) = receiver.recv().await {
@@ -225,15 +354,11 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     window.hide();
                 }
                 Event::ShowTip(tip) => {
-                    //window.set_title(&title);
                     let max_width = emacs_window
                         .clone()
                         .map(|w| w.size().0 - tip.x)
                         .unwrap_or(300);
-                    eprintln!(
-                        "🧣 show tip. max_width {:?}",
-                        max_width
-                    );
+                    eprintln!("🧣 show tip. max_width {:?}", max_width);
                     let (text_surface, tw, th) = render_text_offscreen(
                         &tip.text,
                         &tip.font,
@@ -260,7 +385,6 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                             glib::ControlFlow::Break
                         }
                     });
-                    eprintln!("mooooooooooooooooooooo");
                 }
             }
         }
@@ -304,7 +428,7 @@ fn show_tip(
                 y,
                 text,
                 font,
-                font_size: font_size/2,
+                font_size: font_size / 2,
             }))
             .expect("cant send through channel");
     }
