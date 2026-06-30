@@ -153,13 +153,12 @@ fn main() {
     let total_h = content_h + arrow_size;
 
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
-    window.set_decorated(true);
-    window.set_default_size((content_w * 2.0) as i32, (total_h * 2.0) as i32);
+    window.set_decorated(false);
+    window.set_default_size((content_w) as i32, (total_h) as i32);
     window.set_resizable(false);
     window.set_app_paintable(true);
 
     let area = gtk::DrawingArea::new();
-    area.set_size_request(content_w as i32, total_h as i32);
 
     // choose shadow parameters
     let shadow_pad = 24.0;
