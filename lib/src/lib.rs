@@ -32,7 +32,12 @@ pub enum Event {
     ShowTip(Tip),
 }
 
-fn render_text_offscreen(text: &str, font: &str, size: f64, max_width: i32) -> (ImageSurface, f64, f64) {
+fn render_text_offscreen(
+    text: &str,
+    font: &str,
+    size: f64,
+    max_width: i32,
+) -> (ImageSurface, f64, f64) {
     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
     let cr = Context::new(&tmp).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
@@ -166,7 +171,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     window.set_resizable(true);
     window.set_app_paintable(true);
 
-    window.set_transient_for(emacs_window.as_ref());
+    window.set_transient_for(emacs_window.clone().as_ref());
     eprintln!("‼️................ {:?}", window);
     window.move_(0, 0);
 
@@ -217,16 +222,24 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
         while let Ok(event) = receiver.recv().await {
             match event {
                 Event::HideTip => {
-                    eprintln!("🐦 hide! {:?}", window.hide());
+                    window.hide();
                 }
                 Event::ShowTip(tip) => {
                     //window.set_title(&title);
+                    let max_width = emacs_window
+                        .clone()
+                        .map(|w| w.size().0 - tip.x)
+                        .unwrap_or(300);
                     eprintln!(
-                        "🧣 BEST event. rust created window = {:?} and tip {:?}",
-                        window, tip
+                        "🧣 show tip. max_width {:?}",
+                        max_width
                     );
-                    let (text_surface, tw, th) =
-                        render_text_offscreen(&tip.text, &tip.font, tip.font_size as f64, 300);
+                    let (text_surface, tw, th) = render_text_offscreen(
+                        &tip.text,
+                        &tip.font,
+                        tip.font_size as f64,
+                        max_width,
+                    );
                     canvas.replace((text_surface, tw, th));
                     window.show_all();
                     area.queue_draw();
@@ -234,7 +247,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     window.queue_draw();
                     window.move_(
                         (tip.x as f64 - arrow_x) as i32,
-                        (tip.y as f64 + radius + arrow_size*2.0 + padding) as i32,
+                        (tip.y as f64 + radius + arrow_size * 2.0 + padding) as i32,
                     );
                     glib::timeout_add_local(std::time::Duration::from_millis(16), {
                         let target = window.clone();
@@ -282,7 +295,7 @@ fn show_tip(
     font: String,
     font_size: i32,
 ) -> Result<Value<'_>> {
-    eprintln!("💨 move window x {} y {}", x, y);
+    eprintln!("💨 font_size {:?}", font_size);
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
         sender
@@ -291,7 +304,7 @@ fn show_tip(
                 y,
                 text,
                 font,
-                font_size,
+                font_size: font_size/2,
             }))
             .expect("cant send through channel");
     }
