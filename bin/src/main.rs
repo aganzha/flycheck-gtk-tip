@@ -172,102 +172,67 @@ fn main() {
     let total_h = content_h + arrow_size;
 
     // grow drawing area to fit shadow
-    let area_w = (content_w + 2.0 * shadow_pad) as i32;
-    let area_h = (total_h + 2.0 * shadow_pad) as i32;
+    // let area_w = (content_w + 2.0 * shadow_pad) as i32;
+    // let area_h = (total_h + 2.0 * shadow_pad) as i32;
 
-    area.set_size_request(area_w, area_h);
+    //area.set_size_request(area_w, area_h);
 
     area.connect_draw({
         let area = area.clone();
         move |_, cr| {
-        let w = area.allocated_width() as i32;
-        let h = area.allocated_height() as i32;
+            let w = area.allocated_width() as i32;
+            let h = area.allocated_height() as i32;
 
-        // offscreen: ARGB so alpha shadow works
-        let surf = cairo::ImageSurface::create(cairo::Format::ARgb32, w, h).unwrap();
-        let s_cr = cairo::Context::new(&surf).unwrap();
+            // offscreen: ARGB so alpha shadow works
+            let surf = cairo::ImageSurface::create(cairo::Format::ARgb32, w, h).unwrap();
+            let s_cr = cairo::Context::new(&surf).unwrap();
 
-        // clear offscreen to transparent
-        s_cr.set_operator(cairo::Operator::Source);
-        s_cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-        s_cr.paint().unwrap();
-        s_cr.set_operator(cairo::Operator::Over);
+            // clear offscreen to transparent
+            s_cr.set_operator(cairo::Operator::Source);
+            s_cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+            s_cr.paint().unwrap();
+            s_cr.set_operator(cairo::Operator::Over);
 
-        // translate so the shadow isn’t clipped by widget bounds
-        s_cr.translate(shadow_pad, shadow_pad);
+            // translate so the shadow isn’t clipped by widget bounds
+            s_cr.translate(shadow_pad, shadow_pad);
 
-        // shadow
-        draw_shadow(
-            &s_cr,
-            content_w,
-            total_h,
-            arrow_x,
-            radius,
-            arrow_size,
-            shadow_pad,
-            shadow_steps,
-            dx,
-            dy,
-        );
+            // shadow
+            draw_shadow(
+                &s_cr,
+                content_w,
+                total_h,
+                arrow_x,
+                radius,
+                arrow_size,
+                shadow_pad,
+                shadow_steps,
+                dx,
+                dy,
+            );
 
-        // popover
-        draw_popover(&s_cr, content_w, total_h, arrow_x, radius, arrow_size);
+            // popover
+            draw_popover(&s_cr, content_w, total_h, arrow_x, radius, arrow_size);
 
-        s_cr.set_source_rgb(0.95, 0.95, 0.95);
-        s_cr.fill_preserve().unwrap();
+            s_cr.set_source_rgb(0.95, 0.95, 0.95);
+            s_cr.fill_preserve().unwrap();
 
-        s_cr.set_source_rgb(0.7, 0.7, 0.7);
-        s_cr.set_line_width(1.0);
-        s_cr.stroke().unwrap();
+            s_cr.set_source_rgb(0.7, 0.7, 0.7);
+            s_cr.set_line_width(1.0);
+            s_cr.stroke().unwrap();
 
-        s_cr.set_source_surface(&text_surface, padding, padding + arrow_size)
-            .unwrap();
-        s_cr.paint().unwrap();
+            s_cr.set_source_surface(&text_surface, padding, padding + arrow_size)
+                .unwrap();
+            s_cr.paint().unwrap();
 
-        // finally paint to real cairo context
-        cr.set_operator(cairo::Operator::Source);
-        cr.set_source_surface(&surf, 0.0, 0.0).unwrap();
-        cr.paint().unwrap();
+            // finally paint to real cairo context
+            cr.set_operator(cairo::Operator::Source);
+            cr.set_source_surface(&surf, 0.0, 0.0).unwrap();
+            cr.paint().unwrap();
 
-        gtk::glib::signal::Propagation::Stop
-        }});
+            gtk::glib::signal::Propagation::Stop
+        }
+    });
 
-    // let window = gtk::Window::new(gtk::WindowType::Toplevel);
-    // window.set_decorated(true);
-    // window.set_default_size((content_w * 2.0) as i32, (total_h * 2.0) as i32);
-    // window.set_resizable(false);
-    // window.set_app_paintable(true);
-
-    // let area = gtk::DrawingArea::new();
-    // area.set_size_request(content_w as i32, total_h as i32);
-
-    // area.connect_draw(move |_, cr| {
-    //     // Clear to transparent
-    //     cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-    //     cr.set_operator(cairo::Operator::Source);
-    //     cr.paint().unwrap();
-    //     cr.set_operator(cairo::Operator::Over); // restore default
-
-    //     // Draw the popover shape
-    //     // was draw_popover_shape
-    //     draw_popover(cr, content_w, total_h, arrow_x, radius, arrow_size);
-
-    //     // Fill shape
-    //     cr.set_source_rgb(0.95, 0.95, 0.95);
-    //     cr.fill_preserve().unwrap();
-
-    //     // Stroke shape outline
-    //     cr.set_source_rgb(0.7, 0.7, 0.7);
-    //     cr.set_line_width(1.0);
-    //     cr.stroke().unwrap();
-
-    //     // Draw the text on top
-    //     cr.set_source_surface(&text_surface, padding, padding + arrow_size)
-    //         .unwrap();
-    //     cr.paint().unwrap();
-
-    //     gtk::glib::signal::Propagation::Stop
-    // });
 
     window.add(&area);
     window.show_all();
