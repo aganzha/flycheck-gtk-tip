@@ -20,11 +20,13 @@ static SENDER: OnceLock<RwLock<Sender<Event>>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct Tip {
-    pub text: String,
-    pub x: i32,
-    pub y: i32,
-    pub font: String,
-    pub font_size: f64,
+    text: String,
+    x: i32,
+    y: i32,
+    font: String,
+    font_size: f64,
+    fg_color: String,
+    bg_color: String,
 }
 
 pub enum Event {
@@ -32,10 +34,7 @@ pub enum Event {
     ShowTip(Tip),
 }
 
-fn render_text_offscreen(
-    tip: &Tip,
-    max_width: i32,
-) -> (ImageSurface, f64, f64) {
+fn render_text_offscreen(tip: &Tip, max_width: i32) -> (ImageSurface, f64, f64) {
     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
     let cr = Context::new(&tmp).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
@@ -128,7 +127,6 @@ fn draw_shadow(
     dx: f64,
     dy: f64, // shadow offset (like box-shadow)
 ) {
-
     for i in 0..steps {
         let t = i as f64 / (steps as f64 - 1.0);
 
@@ -143,25 +141,43 @@ fn draw_shadow(
         let alpha = (1.0 - t).powi(2) * 0.20;
         cr.save();
         cr.translate(dx - pad, dy - pad);
-        cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here----------------------
+        cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here
         build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
         cr.fill();
         cr.restore();
     }
 }
 
-
 fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
-
     build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
 
-    cr.set_source_rgb(0.17, 0.21, 0.26);//<----- background color here
+    cr.set_source_rgb(0.17, 0.21, 0.26); //<----- background color here
     cr.fill_preserve();
 
     // final thin outline
     cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
     cr.set_line_width(1.0);
     cr.stroke();
+}
+
+pub struct TextCanvas {
+    surface: ImageSurface,
+    fg_color: String,
+    bg_color: String,
+    width: f64,
+    height: f64,
+}
+
+impl Default for TextCanvas {
+    fn default() -> Self {
+        Self {
+            surface: ImageSurface::create(Format::ARgb32, 1, 1).unwrap(),
+            fg_color: String::new(),
+            bg_color: String::new(),
+            width: 1.0,
+            height: 1.0,
+        }
+    }
 }
 
 #[emacs::module(name = "emacs-gtk3-module")]
@@ -172,8 +188,9 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     let (sender, receiver) = async_channel::unbounded();
     SENDER.get_or_init(|| RwLock::new(sender.clone()));
 
-    let text_surface = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
-    let canvas = Rc::new(RefCell::new((text_surface, 1.0, 1.0)));
+    //let text_surface = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
+    //let canvas = Rc::new(RefCell::new((text_surface, 1.0, 1.0)));
+    let canvas = Rc::new(RefCell::new(TextCanvas::default()));
     let padding = 20.0;
     let radius = 12.0;
     let arrow_size = 14.0;
@@ -201,9 +218,10 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
         let canvas = canvas.clone();
         let window = window.clone();
         move |_, cr| {
-            let (ref text_surface, tw, th) = *canvas.borrow();
-            let content_w = tw + padding * 2.0;
-            let content_h = th + padding * 2.0;
+            //let (ref text_surface, tw, th) = *canvas.borrow();
+            let canvas = canvas.borrow();
+            let content_w = canvas.width + padding * 2.0;
+            let content_h = canvas.height + padding * 2.0;
 
             let shadow_pad = 24.0;
             let shadow_steps = 10;
@@ -212,7 +230,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
 
             // shadow
             draw_shadow(
-                &cr,
+                cr,
                 content_w,
                 content_h,
                 arrow_x,
@@ -231,7 +249,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
 
             draw_popover(cr, content_w, content_h, arrow_x, radius, arrow_size);
 
-            cr.set_source_surface(&*text_surface, padding, padding + arrow_size)
+            cr.set_source_surface(&*canvas.surface, padding, padding + arrow_size)
                 .unwrap();
             cr.paint().unwrap();
 
@@ -254,7 +272,14 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                         .unwrap_or(600);
 
                     let (text_surface, tw, th) = render_text_offscreen(&tip, max_width);
-                    canvas.replace((text_surface, tw, th));
+                    canvas.replace(TextCanvas {
+                        surface: text_surface,
+                        width: tw,
+                        height: th,
+                        fg_color: tip.fg_color.clone(),
+                        bg_color: tip.bg_color.clone(),
+                    });
+                    //(text_surface, tw, th));
                     window.show_all();
                     area.queue_draw();
 
@@ -294,7 +319,6 @@ fn get_emacs_window() -> Option<gtk::Window> {
     None
 }
 
-
 #[defun]
 fn show_tip(
     env: &Env,
@@ -303,6 +327,8 @@ fn show_tip(
     text: String,
     font: String,
     font_size: f64,
+    fg_color: String,
+    bg_color: String,
 ) -> Result<Value<'_>> {
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
@@ -313,6 +339,8 @@ fn show_tip(
                 text,
                 font,
                 font_size,
+                bg_color,
+                fg_color,
             }))
             .expect("cant send through channel");
     }
