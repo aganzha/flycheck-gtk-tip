@@ -7,7 +7,7 @@ use gtk::ffi;
 use gtk::glib;
 use gtk::prelude::*;
 use pango::FontDescription;
-//(module-load (expand-file-name "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so"))
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Once, OnceLock, RwLock};
@@ -24,7 +24,7 @@ pub struct Tip {
     pub x: i32,
     pub y: i32,
     pub font: String,
-    pub font_size: i32,
+    pub font_size: f64,
 }
 
 pub enum Event {
@@ -33,16 +33,14 @@ pub enum Event {
 }
 
 fn render_text_offscreen(
-    text: &str,
-    font: &str,
-    size: f64,
+    tip: &Tip,
     max_width: i32,
 ) -> (ImageSurface, f64, f64) {
     let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
     let cr = Context::new(&tmp).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
-    layout.set_text(text);
-    let desc = FontDescription::from_string(&format!("{} {}", font, size));
+    layout.set_text(&tip.text);
+    let desc = FontDescription::from_string(&format!("{} {}", &tip.font, &tip.font_size));
     layout.set_font_description(Some(&desc));
     layout.set_width(pango::SCALE * max_width);
 
@@ -51,7 +49,7 @@ fn render_text_offscreen(
     let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
     let cr = Context::new(&surface).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
-    layout.set_text(text);
+    layout.set_text(&tip.text);
     layout.set_font_description(Some(&desc));
     layout.set_width(pango::SCALE * max_width);
 
@@ -255,19 +253,11 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                         .map(|w| w.size().0 - tip.x)
                         .unwrap_or(600);
 
-                    eprintln!("🧣 show tip {:?}", tip);
-                    let (text_surface, tw, th) = render_text_offscreen(
-                        &tip.text,
-                        &tip.font,
-                        tip.font_size as f64,
-                        max_width,
-                    );
+                    let (text_surface, tw, th) = render_text_offscreen(&tip, max_width);
                     canvas.replace((text_surface, tw, th));
                     window.show_all();
                     area.queue_draw();
 
-                    // when window opened full screen
-                    // moving should be adjusted!!!
                     window.move_(
                         (tip.x as f64 - arrow_x) as i32,
                         (tip.y as f64 + radius + arrow_size + padding) as i32,
@@ -297,19 +287,14 @@ fn get_emacs_window() -> Option<gtk::Window> {
     println!("List pointer: {:p}", list);
     if !list.is_null() {
         let first = unsafe { (*list).data };
-        println!("🧶 First window pointer: {:?}", first);
         let win = unsafe { gtk::Window::from_glib_none(first as *mut ffi::GtkWindow) };
-        println!("🧄 win {:?} title {:?}", win, win.title());
-        // Don't free the list here if you still need the window -
-        // from_glib_none increments the refcount, so the window stays alive.
-        // aganzha commented out
         unsafe { glib_ffi::g_list_free(list) };
         return Some(win);
     }
     None
 }
 
-// (emacs-gtk3-module-move-window 300 300 "привет!")
+
 #[defun]
 fn show_tip(
     env: &Env,
@@ -317,7 +302,7 @@ fn show_tip(
     y: i32,
     text: String,
     font: String,
-    font_size: i32,
+    font_size: f64,
 ) -> Result<Value<'_>> {
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
@@ -327,7 +312,7 @@ fn show_tip(
                 y,
                 text,
                 font,
-                font_size: font_size / 2,
+                font_size,
             }))
             .expect("cant send through channel");
     }
