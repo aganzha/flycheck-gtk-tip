@@ -138,9 +138,7 @@ fn draw_shadow(
     // (you can change this to match your design)
     for i in 0..steps {
         let t = i as f64 / (steps as f64 - 1.0); // 0..1
-                                                 //let k = 1.0 + t * (padding / radius.max(1.0)); // scale-like inflation
 
-        // simpler “inflation” that often looks good:
         let pad = t * padding;
 
         let w2 = w + 2.0 * pad;
@@ -149,16 +147,17 @@ fn draw_shadow(
         let a2 = (arrow_size + pad).max(0.0);
         let arrow_x2 = arrow_x + pad;
 
-        let alpha = (1.0 - t).powi(2) * 0.35; // tweak to taste
-
+        let alpha = (1.0 - t).powi(2) * 0.20; // tweak to taste
         cr.save();
         cr.translate(dx - pad, dy - pad); // keep it visually aligned while inflating
-        cr.set_source_rgba(0.0, 0.0, 0.0, alpha);
+        cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // shadow color here
         build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
         cr.fill();
         cr.restore();
     }
 }
+
+//const DARK_DANGER_RGBA: (f64, f64, f64, f64) = (0.17, 0.21, 0.26, 1.0);
 
 fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
     //println!("🧄 draw_popover");
@@ -167,7 +166,6 @@ fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, 
     // fill with same background as main window!
     cr.set_source_rgb(0.17, 0.21, 0.26);
     cr.fill_preserve();
-
     // final thin outline
     cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
     cr.set_line_width(1.0);
@@ -190,7 +188,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     let arrow_x = 60.0;
 
     let emacs_window = get_emacs_window();
-    eprintln!("♦️................ {:?}", emacs_window);
+
     let window = gtk::Window::builder()
         .type_(gtk::WindowType::Popup)
         .type_hint(gtk::gdk::WindowTypeHint::Tooltip)
@@ -202,7 +200,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     window.set_app_paintable(true);
 
     window.set_transient_for(emacs_window.clone().as_ref());
-    eprintln!("‼️................ {:?}", window);
+
     window.move_(0, 0);
 
     let area = gtk::DrawingArea::new();
@@ -212,24 +210,14 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
         let canvas = canvas.clone();
         let window = window.clone();
         move |_, cr| {
-            // Clear to transparent
-            cr.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-            cr.set_operator(cairo::Operator::Source);
-            cr.paint().unwrap();
-            cr.set_operator(cairo::Operator::Over); // restore default
-
             let (ref text_surface, tw, th) = *canvas.borrow();
             let content_w = tw + padding * 2.0;
             let content_h = th + padding * 2.0;
-            eprintln!("♦️ >>>>>>>>>>>>>>>> tw {} th {}", content_w, content_h);
 
-            // choose shadow parameters
             let shadow_pad = 24.0;
             let shadow_steps = 10;
-            let dx = 0.0; // like css shadow offset-x
+            let dx = 5.0; // like css shadow offset-x
             let dy = 10.0; // like css shadow offset-y
-
-            cr.translate(shadow_pad, shadow_pad);
 
             // shadow
             draw_shadow(
@@ -245,20 +233,13 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                 dy,
             );
 
-            window.resize((content_w + shadow_pad*3.0) as i32, (content_h + shadow_pad*3.0) as i32);
-            // was draw_popover_shape
+            window.resize(
+                (content_w + shadow_pad) as i32,
+                (content_h + shadow_pad + arrow_size) as i32,
+            );
+
             draw_popover(cr, content_w, content_h, arrow_x, radius, arrow_size);
 
-            // Fill shape
-            cr.set_source_rgb(0.95, 0.95, 0.95);
-            cr.fill_preserve().unwrap();
-
-            // Stroke shape outline
-            cr.set_source_rgb(0.7, 0.7, 0.7);
-            cr.set_line_width(1.0);
-            cr.stroke().unwrap();
-
-            // Draw the text on top
             cr.set_source_surface(&*text_surface, padding, padding + arrow_size)
                 .unwrap();
             cr.paint().unwrap();
@@ -279,8 +260,9 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     let max_width = emacs_window
                         .clone()
                         .map(|w| w.size().0 - tip.x)
-                        .unwrap_or(300);
-                    eprintln!("🧣 show tip. max_width {:?}", max_width);
+                        .unwrap_or(600);
+
+                    eprintln!("🧣 show tip {:?}", tip);
                     let (text_surface, tw, th) = render_text_offscreen(
                         &tip.text,
                         &tip.font,
@@ -292,9 +274,11 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     area.queue_draw();
                     window.set_opacity(0.5);
                     window.queue_draw();
+                    // when window opened full screen
+                    // moving should be adjusted!!!
                     window.move_(
                         (tip.x as f64 - arrow_x) as i32,
-                        (tip.y as f64 + radius + arrow_size * 2.0 + padding) as i32,
+                        (tip.y as f64 + radius + arrow_size + padding) as i32,
                     );
                     glib::timeout_add_local(std::time::Duration::from_millis(16), {
                         let target = window.clone();
@@ -341,7 +325,6 @@ fn show_tip(
     font: String,
     font_size: i32,
 ) -> Result<Value<'_>> {
-    eprintln!("💨 font_size {:?}", font_size);
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
         sender
