@@ -4,6 +4,7 @@ use emacs::{defun, Env, Result, Value};
 use glib::ffi as glib_ffi;
 use glib::translate::*;
 use gtk::ffi;
+use gtk::gdk;
 use gtk::glib;
 use gtk::prelude::*;
 use pango::FontDescription;
@@ -53,7 +54,8 @@ fn render_text_offscreen(tip: &Tip, max_width: i32) -> (ImageSurface, f64, f64) 
     layout.set_font_description(Some(&desc));
     layout.set_width(pango::SCALE * max_width);
 
-    cr.set_source_rgb(1.0, 1.0, 1.0);
+    let fg_rgba = gdk::RGBA::parse(&tip.fg_color).unwrap();
+    cr.set_source_rgb(fg_rgba.red(), fg_rgba.green(), fg_rgba.blue());
     cr.move_to(0.0, 0.0);
     pangocairo::functions::show_layout(&cr, &layout);
 
@@ -157,14 +159,16 @@ fn draw_popover(
     radius: f64,
     arrow_size: f64,
     _fg_color: &str,
-    _bg_color: &str,
+    bg_color: &str,
 ) {
     build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
 
-    cr.set_source_rgb(0.17, 0.21, 0.26); //<----- background color here
+    let bg_rgba = gdk::RGBA::parse(bg_color).unwrap();
+
+    cr.set_source_rgb(bg_rgba.red(), bg_rgba.green(), bg_rgba.blue());
     cr.fill_preserve();
 
-    // final thin outline
+    //final thin outline
     cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
     cr.set_line_width(1.0);
     cr.stroke();
