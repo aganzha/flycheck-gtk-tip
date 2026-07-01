@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use cairo::{Context, Format, ImageSurface};
-use emacs::{defun, Env, Result, Value};
+use emacs::{defun, Env, Result, Value, Vector};
 use glib::ffi as glib_ffi;
 use glib::translate::*;
 use gtk::ffi;
@@ -9,7 +9,8 @@ use gtk::glib;
 use gtk::prelude::*;
 use pango::FontDescription;
 use std::cell::Cell;
-
+use std::path::{PathBuf, Path};
+use std::ffi::{OsString};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Once, OnceLock, RwLock};
@@ -391,4 +392,21 @@ fn hide_tip(env: &Env) -> Result<Value<'_>> {
             .expect("cant send through channel");
     }
     env.intern("t")
+}
+
+
+#[defun]
+fn flycheck_display_errors_in_rust(env: &Env, errors: Value) -> Result<()> {
+    let err1: Result<Value> = errors.car();
+    eprintln!("⚽ {:?}", env);
+    eprintln!("‼️ >>>>>>>>>>>>>>>>>>>> {:?} ........ {:?}", errors, err1);
+    //let pixel_pos = env.call("frame-edges", [])?;
+    //let pos_x: Result<i32> = pixel_pos.car();
+    if let Ok(buffer_name)= env.call("buffer-name", []) {
+
+        eprintln!("🧳 buffer_name >> {:?} <<", buffer_name.into_rust::<String>()?);
+    }
+    //let buffer_name: Result<Option<String>> = buffer_name.into_rust();
+
+    Ok(())
 }
