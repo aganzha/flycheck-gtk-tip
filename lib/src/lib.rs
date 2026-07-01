@@ -7,6 +7,7 @@ use gtk::ffi;
 use gtk::glib;
 use gtk::prelude::*;
 use pango::FontDescription;
+use std::cell::Cell;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -148,7 +149,16 @@ fn draw_shadow(
     }
 }
 
-fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
+fn draw_popover(
+    cr: &cairo::Context,
+    w: f64,
+    h: f64,
+    arrow_x: f64,
+    radius: f64,
+    arrow_size: f64,
+    _fg_color: &str,
+    _bg_color: &str,
+) {
     build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
 
     cr.set_source_rgb(0.17, 0.21, 0.26); //<----- background color here
@@ -218,7 +228,6 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
         let canvas = canvas.clone();
         let window = window.clone();
         move |_, cr| {
-            //let (ref text_surface, tw, th) = *canvas.borrow();
             let canvas = canvas.borrow();
             let content_w = canvas.width + padding * 2.0;
             let content_h = canvas.height + padding * 2.0;
@@ -247,7 +256,16 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                 (content_h + shadow_pad + arrow_size) as i32,
             );
 
-            draw_popover(cr, content_w, content_h, arrow_x, radius, arrow_size);
+            draw_popover(
+                cr,
+                content_w,
+                content_h,
+                arrow_x,
+                radius,
+                arrow_size,
+                &canvas.fg_color,
+                &canvas.bg_color,
+            );
 
             cr.set_source_surface(&*canvas.surface, padding, padding + arrow_size)
                 .unwrap();
@@ -258,6 +276,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     });
 
     window.add(&area);
+    let threshold = Rc::new(Cell::new(false));
 
     glib::spawn_future_local(async move {
         while let Ok(event) = receiver.recv().await {
@@ -266,6 +285,18 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     window.hide();
                 }
                 Event::ShowTip(tip) => {
+                    if threshold.get() {
+                        continue;
+                    }
+                    threshold.replace(true);
+                    glib::timeout_add_local(std::time::Duration::from_millis(300), {
+                        let threshold = threshold.clone();
+                        move || {
+                            threshold.replace(false);
+                            glib::ControlFlow::Break
+                        }
+                    });
+
                     let max_width = emacs_window
                         .clone()
                         .map(|w| w.size().0 - tip.x)
@@ -279,7 +310,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                         fg_color: tip.fg_color.clone(),
                         bg_color: tip.bg_color.clone(),
                     });
-                    //(text_surface, tw, th));
+
                     window.show_all();
                     area.queue_draw();
 
@@ -287,19 +318,20 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                         (tip.x as f64 - arrow_x) as i32,
                         (tip.y as f64 + radius + arrow_size + padding) as i32,
                     );
-                    // window.set_opacity(0.0);
-                    // window.queue_draw();
-                    // glib::timeout_add_local(std::time::Duration::from_millis(10), {
-                    //     let target = window.clone();
-                    //     move || {
-                    //         let opacity = target.opacity();
-                    //         if opacity < 1.0 {
-                    //             target.set_opacity((opacity + 0.05).min(1.0));
-                    //             return glib::ControlFlow::Continue;
-                    //         }
-                    //         glib::ControlFlow::Break
-                    //     }
-                    // });
+                    // Fade In effect
+                    window.set_opacity(0.5);
+                    window.queue_draw();
+                    glib::timeout_add_local(std::time::Duration::from_millis(15), {
+                        let target = window.clone();
+                        move || {
+                            let opacity = target.opacity();
+                            if opacity < 1.0 {
+                                target.set_opacity((opacity + 0.05).min(1.0));
+                                return glib::ControlFlow::Continue;
+                            }
+                            glib::ControlFlow::Break
+                        }
+                    });
                 }
             }
         }
