@@ -44,21 +44,17 @@ fn render_text_offscreen(
     layout.set_text(text);
     let desc = FontDescription::from_string(&format!("{} {}", font, size));
     layout.set_font_description(Some(&desc));
-    layout.set_width(pango::SCALE * max_width); // <-- set width here too
+    layout.set_width(pango::SCALE * max_width);
 
-    let (w, h) = layout.pixel_size(); // <-- use pixel_size, not pixel_extents
+    let (w, h) = layout.pixel_size();
 
     let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
     let cr = Context::new(&surface).unwrap();
     let layout = pangocairo::functions::create_layout(&cr);
     layout.set_text(text);
     layout.set_font_description(Some(&desc));
-    layout.set_width(pango::SCALE * max_width); // <-- and here
+    layout.set_width(pango::SCALE * max_width);
 
-    // what it was???
-    // same foreground color as in main view
-    //cr.set_source_rgba(1.0, 1.0, 1.0, 0.0);
-    //cr.paint().unwrap();
     cr.set_source_rgb(1.0, 1.0, 1.0);
     cr.move_to(0.0, 0.0);
     pangocairo::functions::show_layout(&cr, &layout);
@@ -134,10 +130,9 @@ fn draw_shadow(
     dx: f64,
     dy: f64, // shadow offset (like box-shadow)
 ) {
-    // shadow color: black with varying alpha
-    // (you can change this to match your design)
+
     for i in 0..steps {
-        let t = i as f64 / (steps as f64 - 1.0); // 0..1
+        let t = i as f64 / (steps as f64 - 1.0);
 
         let pad = t * padding;
 
@@ -147,25 +142,24 @@ fn draw_shadow(
         let a2 = (arrow_size + pad).max(0.0);
         let arrow_x2 = arrow_x + pad;
 
-        let alpha = (1.0 - t).powi(2) * 0.20; // tweak to taste
+        let alpha = (1.0 - t).powi(2) * 0.20;
         cr.save();
-        cr.translate(dx - pad, dy - pad); // keep it visually aligned while inflating
-        cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // shadow color here
+        cr.translate(dx - pad, dy - pad);
+        cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here----------------------
         build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
         cr.fill();
         cr.restore();
     }
 }
 
-//const DARK_DANGER_RGBA: (f64, f64, f64, f64) = (0.17, 0.21, 0.26, 1.0);
 
 fn draw_popover(cr: &cairo::Context, w: f64, h: f64, arrow_x: f64, radius: f64, arrow_size: f64) {
-    //println!("🧄 draw_popover");
+
     build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
 
-    // fill with same background as main window!
-    cr.set_source_rgb(0.17, 0.21, 0.26);
+    cr.set_source_rgb(0.17, 0.21, 0.26);//<----- background color here
     cr.fill_preserve();
+
     // final thin outline
     cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
     cr.set_line_width(1.0);
@@ -195,7 +189,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
         .window_position(gtk::WindowPosition::Mouse)
         .build();
     window.set_decorated(false);
-    //window.set_default_size(content_w as i32, total_h as i32);
+
     window.set_resizable(true);
     window.set_app_paintable(true);
 
@@ -204,7 +198,6 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     window.move_(0, 0);
 
     let area = gtk::DrawingArea::new();
-    //area.set_size_request(content_w as i32, total_h as i32);
 
     area.connect_draw({
         let canvas = canvas.clone();
@@ -272,25 +265,26 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     canvas.replace((text_surface, tw, th));
                     window.show_all();
                     area.queue_draw();
-                    window.set_opacity(0.5);
-                    window.queue_draw();
+
                     // when window opened full screen
                     // moving should be adjusted!!!
                     window.move_(
                         (tip.x as f64 - arrow_x) as i32,
                         (tip.y as f64 + radius + arrow_size + padding) as i32,
                     );
-                    glib::timeout_add_local(std::time::Duration::from_millis(16), {
-                        let target = window.clone();
-                        move || {
-                            let opacity = target.opacity();
-                            if opacity < 1.0 {
-                                target.set_opacity((opacity + 0.05).min(1.0));
-                                return glib::ControlFlow::Continue;
-                            }
-                            glib::ControlFlow::Break
-                        }
-                    });
+                    // window.set_opacity(0.0);
+                    // window.queue_draw();
+                    // glib::timeout_add_local(std::time::Duration::from_millis(10), {
+                    //     let target = window.clone();
+                    //     move || {
+                    //         let opacity = target.opacity();
+                    //         if opacity < 1.0 {
+                    //             target.set_opacity((opacity + 0.05).min(1.0));
+                    //             return glib::ControlFlow::Continue;
+                    //         }
+                    //         glib::ControlFlow::Break
+                    //     }
+                    // });
                 }
             }
         }
