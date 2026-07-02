@@ -35,142 +35,61 @@ pub enum Event {
     ShowTip(Tip),
 }
 
-fn render_text_offscreen(tip: &Tip, max_width: i32) -> (ImageSurface, f64, f64) {
-    let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
-    let cr = Context::new(&tmp).unwrap();
-    let layout = pangocairo::functions::create_layout(&cr);
-    layout.set_text(&tip.text);
-    let desc = FontDescription::from_string(&format!("{} {}", &tip.font, &tip.font_size));
-    layout.set_font_description(Some(&desc));
-    layout.set_width(pango::SCALE * max_width);
-
-    let (w, h) = layout.pixel_size();
-
-    let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
-    let cr = Context::new(&surface).unwrap();
-    let layout = pangocairo::functions::create_layout(&cr);
-    layout.set_text(&tip.text);
-    layout.set_font_description(Some(&desc));
-    layout.set_width(pango::SCALE * max_width);
-
-    let fg_rgba = gdk::RGBA::parse(&tip.fg_color).unwrap();
-    cr.set_source_rgb(fg_rgba.red(), fg_rgba.green(), fg_rgba.blue());
-    cr.move_to(0.0, 0.0);
-    pangocairo::functions::show_layout(&cr, &layout);
-
-    (surface, w as f64, h as f64)
-}
-
-fn build_popover_path(
-    cr: &cairo::Context,
-    w: f64,
-    h: f64,
-    arrow_x: f64,
+pub struct Popover {
+    width: f64,
+    height: f64,
     radius: f64,
     arrow_size: f64,
-) {
-    let arrow_half = arrow_size / 2.0;
-
-    cr.new_path();
-    cr.move_to(radius, arrow_size);
-    cr.line_to(arrow_x - arrow_half, arrow_size);
-    cr.line_to(arrow_x, 0.0);
-    cr.line_to(arrow_x + arrow_half, arrow_size);
-    cr.line_to(w - radius, arrow_size);
-
-    cr.arc(
-        w - radius,
-        arrow_size + radius,
-        radius,
-        -std::f64::consts::FRAC_PI_2,
-        0.0,
-    );
-
-    cr.line_to(w, h - radius);
-    cr.arc(
-        w - radius,
-        h - radius,
-        radius,
-        0.0,
-        std::f64::consts::FRAC_PI_2,
-    );
-
-    cr.line_to(radius, h);
-    cr.arc(
-        radius,
-        h - radius,
-        radius,
-        std::f64::consts::FRAC_PI_2,
-        std::f64::consts::PI,
-    );
-
-    cr.line_to(0.0, arrow_size + radius);
-
-    cr.arc(
-        radius,
-        arrow_size + radius,
-        radius,
-        std::f64::consts::PI,
-        std::f64::consts::PI * 1.5,
-    );
-
-    cr.close_path();
+    arrow_x: f64,
 }
 
-fn draw_shadow(
-    cr: &cairo::Context,
-    w: f64,
-    h: f64,
-    arrow_x: f64,
-    radius: f64,
-    arrow_size: f64,
-    padding: f64, // overall shadow spread
-    steps: usize, // blur smoothness
-    dx: f64,
-    dy: f64, // shadow offset (like box-shadow)
-) {
-    for i in 0..steps {
-        let t = i as f64 / (steps as f64 - 1.0);
+impl Popover {
+    fn draw_path(&self, cr: &cairo::Context) {
+        let arrow_half = self.arrow_size / 2.0;
+        cr.new_path();
+        cr.move_to(self.radius, self.arrow_size);
+        cr.line_to(self.arrow_x - arrow_half, self.arrow_size);
+        cr.line_to(self.arrow_x, 0.0);
+        cr.line_to(self.arrow_x + arrow_half, self.arrow_size);
+        cr.line_to(self.width - self.radius, self.arrow_size);
 
-        let pad = t * padding;
+        cr.arc(
+            self.width - self.radius,
+            self.arrow_size + self.radius,
+            self.radius,
+            -std::f64::consts::FRAC_PI_2,
+            0.0,
+        );
 
-        let w2 = w + 2.0 * pad;
-        let h2 = h + 2.0 * pad;
-        let r2 = (radius + pad).max(0.0);
-        let a2 = (arrow_size + pad).max(0.0);
-        let arrow_x2 = arrow_x + pad;
+        cr.line_to(self.width, self.height - self.radius);
+        cr.arc(
+            self.width - self.radius,
+            self.height - self.radius,
+            self.radius,
+            0.0,
+            std::f64::consts::FRAC_PI_2,
+        );
 
-        let alpha = (1.0 - t).powi(2) * 0.20;
-        cr.save();
-        cr.translate(dx - pad, dy - pad);
-        cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here
-        build_popover_path(cr, w2, h2, arrow_x2, r2, a2);
-        cr.fill();
-        cr.restore();
+        cr.line_to(self.radius, self.height);
+        cr.arc(
+            self.radius,
+            self.height - self.radius,
+            self.radius,
+            std::f64::consts::FRAC_PI_2,
+            std::f64::consts::PI,
+        );
+
+        cr.line_to(0.0, self.arrow_size + self.radius);
+
+        cr.arc(
+            self.radius,
+            self.arrow_size + self.radius,
+            self.radius,
+            std::f64::consts::PI,
+            std::f64::consts::PI * 1.5,
+        );
+        cr.close_path();
     }
-}
-
-fn draw_popover(
-    cr: &cairo::Context,
-    w: f64,
-    h: f64,
-    arrow_x: f64,
-    radius: f64,
-    arrow_size: f64,
-    _fg_color: &str,
-    bg_color: &str,
-) {
-    build_popover_path(cr, w, h, arrow_x, radius, arrow_size);
-
-    let bg_rgba = gdk::RGBA::parse(bg_color).unwrap();
-
-    cr.set_source_rgb(bg_rgba.red(), bg_rgba.green(), bg_rgba.blue());
-    cr.fill_preserve();
-
-    //final thin outline
-    cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
-    cr.set_line_width(1.0);
-    cr.stroke();
 }
 
 pub struct TextCanvas {
@@ -179,16 +98,145 @@ pub struct TextCanvas {
     bg_color: String,
     width: f64,
     height: f64,
+
+    padding: f64,
+    radius: f64,
+    arrow_size: f64,
+    arrow_x: f64,
+
+    shadow_pad: f64,
+    shadow_steps: i32,
+    dx: f64,
+    dy: f64,
 }
 
 impl Default for TextCanvas {
     fn default() -> Self {
         Self {
             surface: ImageSurface::create(Format::ARgb32, 1, 1).unwrap(),
-            fg_color: String::new(),
-            bg_color: String::new(),
+            fg_color: "black".to_string(),
+            bg_color: "white".to_string(),
             width: 1.0,
             height: 1.0,
+
+            padding: 20.0,
+            radius: 12.0,
+            arrow_size: 14.0,
+            arrow_x: 60.0,
+
+            shadow_pad: 24.0,
+            shadow_steps: 10,
+            dx: 5.0,
+            dy: 10.0,
+        }
+    }
+}
+
+impl TextCanvas {
+    fn prepare_text(&mut self, tip: &Tip, max_width: i32) {
+        let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
+        let cr = Context::new(&tmp).unwrap();
+        let layout = pangocairo::functions::create_layout(&cr);
+        layout.set_text(&tip.text);
+        let desc = FontDescription::from_string(&format!("{} {}", &tip.font, &tip.font_size));
+        layout.set_font_description(Some(&desc));
+        layout.set_width(pango::SCALE * max_width);
+
+        let (w, h) = layout.pixel_size();
+
+        let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
+        let cr = Context::new(&surface).unwrap();
+        let layout = pangocairo::functions::create_layout(&cr);
+        layout.set_text(&tip.text);
+        layout.set_font_description(Some(&desc));
+        layout.set_width(pango::SCALE * max_width);
+
+        let fg_rgba = gdk::RGBA::parse(&tip.fg_color).unwrap();
+        cr.set_source_rgb(fg_rgba.red(), fg_rgba.green(), fg_rgba.blue());
+        cr.move_to(0.0, 0.0);
+        pangocairo::functions::show_layout(&cr, &layout);
+        self.surface = surface;
+        self.width = w as f64;
+        self.height = h as f64;
+        self.bg_color = tip.bg_color.clone();
+        self.bg_color = tip.bg_color.clone();
+    }
+
+    fn window_position(&self, tip: &Tip, has_titlebar: bool) -> (i32, i32) {
+        let window_x: i32 = {
+            let target_x = (tip.x as f64 - self.arrow_x) as i32;
+            if target_x > 0 {
+                target_x
+            } else {
+                0
+            }
+        };
+        let mut window_y = (tip.y as f64 + self.arrow_size + self.padding) as i32;
+        if has_titlebar {
+            window_y += TITLE_BAR_HEIGHT;
+        }
+        (window_x, window_y)
+    }
+    fn window_size(&self) -> (i32, i32) {
+        (
+            (self.full_width() + self.shadow_pad) as i32,
+            (self.full_height() + self.shadow_pad + self.arrow_size) as i32,
+        )
+    }
+    fn popover(&self) -> Popover {
+        Popover {
+            width: self.full_width(),
+            height: self.full_height(),
+            radius: self.radius,
+            arrow_size: self.arrow_size,
+            arrow_x: self.arrow_x,
+        }
+    }
+    fn full_width(&self) -> f64 {
+        self.width + self.padding * 2.0
+    }
+    fn full_height(&self) -> f64 {
+        self.height + self.padding * 2.0
+    }
+    fn draw_popover(&self, cr: &cairo::Context) {
+        self.popover().draw_path(cr);
+
+        let bg_rgba = gdk::RGBA::parse(&self.bg_color).unwrap();
+
+        cr.set_source_rgb(bg_rgba.red(), bg_rgba.green(), bg_rgba.blue());
+        cr.fill_preserve();
+
+        //final thin outline
+        cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
+        cr.set_line_width(1.0);
+        cr.stroke();
+    }
+    fn draw_shadow(&self, cr: &cairo::Context) {
+        for i in 0..self.shadow_steps {
+            let t = i as f64 / (self.shadow_steps as f64 - 1.0);
+
+            let pad = t * self.padding;
+
+            let w2 = self.full_width() + 2.0 * pad;
+            let h2 = self.full_height() + 2.0 * pad;
+            let r2 = (self.radius + pad).max(0.0);
+            let a2 = (self.arrow_size + pad).max(0.0);
+            let arrow_x2 = self.arrow_x + pad;
+
+            let alpha = (1.0 - t).powi(2) * 0.20;
+            cr.save();
+            cr.translate(self.dx - pad, self.dy - pad);
+            cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here
+            let popover = Popover {
+                width: w2,
+                height: h2,
+                radius: r2,
+                arrow_x: arrow_x2,
+                arrow_size: a2,
+            };
+            popover.draw_path(cr);
+            cr.fill();
+            cr.restore();
         }
     }
 }
@@ -198,7 +246,6 @@ const TITLE_BAR_HEIGHT: i32 = 35;
 fn has_titlebar(window: &gtk::Window) -> bool {
     if let Some(gdk_win) = window.window() {
         let state = gdk_win.state();
-        // Fullscreen windows typically don't have titlebar
         !state.contains(gdk::WindowState::FULLSCREEN)
     } else {
         true
@@ -213,13 +260,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     let (sender, receiver) = async_channel::unbounded();
     SENDER.get_or_init(|| RwLock::new(sender.clone()));
 
-    //let text_surface = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
-    //let canvas = Rc::new(RefCell::new((text_surface, 1.0, 1.0)));
     let canvas = Rc::new(RefCell::new(TextCanvas::default()));
-    let padding = 20.0;
-    let radius = 12.0;
-    let arrow_size = 14.0;
-    let arrow_x = 60.0;
 
     let emacs_window = get_emacs_window();
 
@@ -244,46 +285,19 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
         let window = window.clone();
         move |_, cr| {
             let canvas = canvas.borrow();
-            let content_w = canvas.width + padding * 2.0;
-            let content_h = canvas.height + padding * 2.0;
+            canvas.draw_shadow(cr);
 
-            let shadow_pad = 24.0;
-            let shadow_steps = 10;
-            let dx = 5.0; // like css shadow offset-x
-            let dy = 10.0; // like css shadow offset-y
+            let (window_w, window_h) = canvas.window_size();
+            window.resize(window_w, window_h);
 
-            // shadow
-            draw_shadow(
-                cr,
-                content_w,
-                content_h,
-                arrow_x,
-                radius,
-                arrow_size,
-                shadow_pad,
-                shadow_steps,
-                dx,
-                dy,
-            );
+            canvas.draw_popover(cr);
 
-            window.resize(
-                (content_w + shadow_pad) as i32,
-                (content_h + shadow_pad + arrow_size) as i32,
-            );
-
-            draw_popover(
-                cr,
-                content_w,
-                content_h,
-                arrow_x,
-                radius,
-                arrow_size,
-                &canvas.fg_color,
-                &canvas.bg_color,
-            );
-
-            cr.set_source_surface(&*canvas.surface, padding, padding + arrow_size)
-                .unwrap();
+            cr.set_source_surface(
+                &*canvas.surface,
+                canvas.padding,
+                canvas.padding + canvas.arrow_size,
+            )
+            .unwrap();
             cr.paint().unwrap();
 
             gtk::glib::signal::Propagation::Stop
@@ -320,31 +334,16 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                         .unwrap_or((640, 480, true));
                     let max_width = emacs_width - tip.x;
 
-                    let (text_surface, tw, th) = render_text_offscreen(&tip, max_width);
-                    canvas.replace(TextCanvas {
-                        surface: text_surface,
-                        width: tw,
-                        height: th,
-                        fg_color: tip.fg_color.clone(),
-                        bg_color: tip.bg_color.clone(),
-                    });
+                    {
+                        canvas.borrow_mut().prepare_text(&tip, max_width);
+                    }
 
                     window.show_all();
                     area.queue_draw();
-                    //println!("🤕 ................. {:?}", emacs_window.clone().map(|w| titlebar_height(&w)));
-                    let window_x: i32 = {
-                        let target_x = (tip.x as f64 - arrow_x) as i32;
-                        if target_x > 0 {
-                            target_x
-                        } else {
-                            0
-                        }
-                    };
-                    let mut window_y = (tip.y as f64 + arrow_size + padding) as i32;
-                    if has_titlebar {
-                        window_y += TITLE_BAR_HEIGHT;
-                    }
+
+                    let (window_x, window_y) = canvas.borrow().window_position(&tip, has_titlebar);
                     window.move_(window_x, window_y);
+
                     // Fade In effect
                     window.set_opacity(0.5);
                     window.queue_draw();
@@ -368,7 +367,6 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
 
 fn get_emacs_window() -> Option<gtk::Window> {
     let list = unsafe { ffi::gtk_window_list_toplevels() };
-    println!("List pointer: {:p}", list);
     if !list.is_null() {
         let first = unsafe { (*list).data };
         let win = unsafe { gtk::Window::from_glib_none(first as *mut ffi::GtkWindow) };
@@ -414,22 +412,4 @@ fn hide_tip(env: &Env) -> Result<Value<'_>> {
             .expect("cant send through channel");
     }
     env.intern("t")
-}
-
-#[defun]
-fn flycheck_display_errors_in_rust(env: &Env, errors: Value) -> Result<()> {
-    let err1: Result<Value> = errors.car();
-    eprintln!("⚽ {:?}", env);
-    eprintln!("‼️ >>>>>>>>>>>>>>>>>>>> {:?} ........ {:?}", errors, err1);
-    //let pixel_pos = env.call("frame-edges", [])?;
-    //let pos_x: Result<i32> = pixel_pos.car();
-    if let Ok(buffer_name) = env.call("buffer-name", []) {
-        eprintln!(
-            "🧳 buffer_name >> {:?} <<",
-            buffer_name.into_rust::<String>()?
-        );
-    }
-    //let buffer_name: Result<Option<String>> = buffer_name.into_rust();
-
-    Ok(())
 }
