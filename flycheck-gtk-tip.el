@@ -8,10 +8,9 @@
 ;;   :straight (flycheck-gtk-tip
 ;;              :type git
 ;;              :local-repo "/home/aganzha/emacs-gtk3-module/"
-;;              :pre-build ("curl" "-L" "-O" "https://github.com/agrahn/Android-Password-Store/releases/download/latest/rev-hash.txt")
+;;              :pre-build ("./gh-release.sh")
 ;;              :files ("rev-hash.txt" "flycheck-gtk-tip.el"))
-;;   :ensure t
-;;   :config (flycheck-gtk-tip-setup))
+;;   :ensure t)
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   (let ((all-messages ""))
@@ -47,6 +46,7 @@
     )
   )
 
+
 (defun flycheck-gtk-tip-setup ()
   (let* ((dir-name (expand-file-name "libemacs_gtk3_module" user-emacs-directory))
          (soname (expand-file-name "libemacs_gtk3_module.so" dir-name)))
@@ -60,6 +60,8 @@
                   (emacs-gtk3-module-hide-tip)))
     )
   )
+
+(flycheck-gtk-tip-setup)
 
 (provide 'flycheck-gtk-tip)
 ;;; flycheck-gtk-tip.el ends here
