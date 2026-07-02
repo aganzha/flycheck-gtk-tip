@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use cairo::{Context, Format, ImageSurface};
-use emacs::{defun, Env, Result, Value, Vector};
+use emacs::{defun, Env, Result, Value};
 use glib::ffi as glib_ffi;
 use glib::translate::*;
 use gtk::ffi;
@@ -9,8 +9,6 @@ use gtk::glib;
 use gtk::prelude::*;
 use pango::FontDescription;
 use std::cell::Cell;
-use std::path::{PathBuf, Path};
-use std::ffi::{OsString};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Once, OnceLock, RwLock};
@@ -195,6 +193,18 @@ impl Default for TextCanvas {
     }
 }
 
+const TITLE_BAR_HEIGHT: i32 = 35;
+
+fn has_titlebar(window: &gtk::Window) -> bool {
+    if let Some(gdk_win) = window.window() {
+        let state = gdk_win.state();
+        // Fullscreen windows typically don't have titlebar
+        !state.contains(gdk::WindowState::FULLSCREEN)
+    } else {
+        true
+    }
+}
+
 #[emacs::module(name = "emacs-gtk3-module")]
 fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     INIT.call_once(|| {
@@ -301,11 +311,14 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                             glib::ControlFlow::Break
                         }
                     });
-
-                    let max_width = emacs_window
+                    let (emacs_width, _emacs_height, has_titlebar) = emacs_window
                         .clone()
-                        .map(|w| w.size().0 - tip.x)
-                        .unwrap_or(600);
+                        .map(|w| {
+                            let size = w.size();
+                            (size.0, size.1, has_titlebar(&w))
+                        })
+                        .unwrap_or((640, 480, true));
+                    let max_width = emacs_width - tip.x;
 
                     let (text_surface, tw, th) = render_text_offscreen(&tip, max_width);
                     canvas.replace(TextCanvas {
@@ -318,11 +331,20 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
 
                     window.show_all();
                     area.queue_draw();
-
-                    window.move_(
-                        (tip.x as f64 - arrow_x) as i32,
-                        (tip.y as f64 + radius + arrow_size + padding) as i32,
-                    );
+                    //println!("🤕 ................. {:?}", emacs_window.clone().map(|w| titlebar_height(&w)));
+                    let window_x: i32 = {
+                        let target_x = (tip.x as f64 - arrow_x) as i32;
+                        if target_x > 0 {
+                            target_x
+                        } else {
+                            0
+                        }
+                    };
+                    let mut window_y = (tip.y as f64 + arrow_size + padding) as i32;
+                    if has_titlebar {
+                        window_y += TITLE_BAR_HEIGHT;
+                    }
+                    window.move_(window_x, window_y);
                     // Fade In effect
                     window.set_opacity(0.5);
                     window.queue_draw();
@@ -394,7 +416,6 @@ fn hide_tip(env: &Env) -> Result<Value<'_>> {
     env.intern("t")
 }
 
-
 #[defun]
 fn flycheck_display_errors_in_rust(env: &Env, errors: Value) -> Result<()> {
     let err1: Result<Value> = errors.car();
@@ -402,9 +423,11 @@ fn flycheck_display_errors_in_rust(env: &Env, errors: Value) -> Result<()> {
     eprintln!("‼️ >>>>>>>>>>>>>>>>>>>> {:?} ........ {:?}", errors, err1);
     //let pixel_pos = env.call("frame-edges", [])?;
     //let pos_x: Result<i32> = pixel_pos.car();
-    if let Ok(buffer_name)= env.call("buffer-name", []) {
-
-        eprintln!("🧳 buffer_name >> {:?} <<", buffer_name.into_rust::<String>()?);
+    if let Ok(buffer_name) = env.call("buffer-name", []) {
+        eprintln!(
+            "🧳 buffer_name >> {:?} <<",
+            buffer_name.into_rust::<String>()?
+        );
     }
     //let buffer_name: Result<Option<String>> = buffer_name.into_rust();
 
