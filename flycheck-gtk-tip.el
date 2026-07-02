@@ -45,31 +45,29 @@
 
 
 (defun flycheck-gtk-tip-straight-setup ()
-  ;; - [ ] chcek module is downloaded in ~/straight/build
-  ;; - [ ] if not: check system first
-  ;; - [ ] download module. load it.
-  (let* ((module-name
-          (file-name-base
-           (directory-file-name
-            (file-name-directory default-directory))))
-         (soname (replace-regexp-in-string "-" "_" (format "lib%s.so" module-name)))
-         (sopath
-          (expand-file-name
-           soname
-           (expand-file-name module-name
-                             (expand-file-name straight-build-dir
-                                               (expand-file-name "straight" user-emacs-directory))))))
+  (when (featurep 'pgtk)
+    (let* ((module-name
+            (file-name-base
+             (directory-file-name
+              (file-name-directory default-directory))))
+           (soname (replace-regexp-in-string "-" "_" (format "lib%s.so" module-name)))
+           (sopath
+            (expand-file-name
+             soname
+             (expand-file-name module-name
+                               (expand-file-name straight-build-dir
+                                                 (expand-file-name "straight" user-emacs-directory))))))
 
-  (unless (file-exists-p sopath)
-    (url-copy-file (format "http://localhost:9000/%s" soname) sopath t))
-  (module-load sopath)
+      (unless (file-exists-p sopath)
+        (url-copy-file (format "http://localhost:9000/%s" soname) sopath t))
+      (module-load sopath)
 
-  (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
-  (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
-  (setq flycheck-display-errors-delay 0.2)
-  (advice-add 'keyboard-quit :before
-              (defun kill-gtk-tip (&rest _)
-                (flycheck-gtk-tip-hide)))))
+      (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
+      (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
+      (setq flycheck-display-errors-delay 0.2)
+      (advice-add 'keyboard-quit :before
+                  (defun kill-gtk-tip (&rest _)
+                    (flycheck-gtk-tip-hide))))))
 
 (flycheck-gtk-tip-straight-setup)
 
