@@ -86,7 +86,7 @@
                                                  (expand-file-name "straight" user-emacs-directory))))))
 
       (unless (file-exists-p sopath)
-        (url-copy-file (format "http://localhost:9000/%s" soname) sopath t))
+        (url-copy-file (format "https://github.com/aganzha/flycheck-gtk-tip/releases/download/latest/%s" soname) sopath t))
       (module-load sopath)
 
       (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
