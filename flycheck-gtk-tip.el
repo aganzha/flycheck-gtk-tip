@@ -1,5 +1,17 @@
+;;; flycheck-gtk-tip.el --- Flycheck GTK tip  -*- lexical-binding: t; -*-
+
 ;;; Code:
 (require 'flycheck)
+
+;;; Installing:
+;; (use-package flycheck-gtk-tip
+;;   :straight (flycheck-gtk-tip
+;;              :type git
+;;              :local-repo "/home/aganzha/emacs-gtk3-module/"
+;;              :pre-build ("curl" "-L" "-O" "https://github.com/agrahn/Android-Password-Store/releases/download/latest/rev-hash.txt")
+;;              :files ("rev-hash.txt" "flycheck-gtk-tip.el"))
+;;   :ensure t
+;;   :config (flycheck-gtk-tip-setup))
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   (let ((all-messages ""))
@@ -35,22 +47,19 @@
     )
   )
 
-(let* ((url "https://github.com/agrahn/Android-Password-Store/releases/download/latest/rev-hash.txt")
-       (dirname (file-name-base url))
-       (soname (file-name-nondirectory url))
-       (targetdir (expand-file-name dirname user-emacs-directory))
-       (targetso (expand-file-name soname targetdir)))
-  (make-directory targetdir t)
-  (url-copy-file url targetso t)
-  ;; thats it. then just load it and assign functions from it.
-  (message "💦 heeeeeeeeeeeeey! %s" targetso)
-  ;;(module-load targetso)
-  (module-load "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so")
-  (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
-  (setq flycheck-clear-displayed-errors-function #'emacs-gtk3-module-hide-tip)
-  (setq flycheck-display-errors-delay 0.2)
-  (advice-add 'keyboard-quit :before
-              (defun kill-gtk-tip (&rest _)
-                (emacs-gtk3-module-hide-tip)))
+(defun flycheck-gtk-tip-setup ()
+  (let* ((dir-name (expand-file-name "libemacs_gtk3_module" user-emacs-directory))
+         (soname (expand-file-name "libemacs_gtk3_module.so" dir-name)))
+    ;;(module-load soname)
+    (module-load "/home/aganzha/emacs-gtk3-module/target/release/libemacs_gtk3_module.so")
+    (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)  
+    (setq flycheck-clear-displayed-errors-function #'emacs-gtk3-module-hide-tip)
+    (setq flycheck-display-errors-delay 0.2)
+    (advice-add 'keyboard-quit :before
+                (defun kill-gtk-tip (&rest _)
+                  (emacs-gtk3-module-hide-tip)))
+    )
   )
 
+(provide 'flycheck-gtk-tip)
+;;; flycheck-gtk-tip.el ends here
