@@ -252,7 +252,7 @@ fn has_titlebar(window: &gtk::Window) -> bool {
     }
 }
 
-#[emacs::module(name = "emacs-gtk3-module")]
+#[emacs::module(name = "flycheck-gtk-tip")]
 fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     INIT.call_once(|| {
         let _ = gtk::init();
@@ -377,7 +377,7 @@ fn get_emacs_window() -> Option<gtk::Window> {
 }
 
 #[defun]
-fn show_tip(
+fn show(
     env: &Env,
     x: i32,
     y: i32,
@@ -403,8 +403,9 @@ fn show_tip(
     }
     env.intern("t")
 }
+
 #[defun]
-fn hide_tip(env: &Env) -> Result<Value<'_>> {
+fn hide(env: &Env) -> Result<Value<'_>> {
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
         sender

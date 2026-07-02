@@ -1,5 +1,5 @@
 [package]
-name = "emacs-gtk3-module"
+name = "flycheck-gtk-tip"
 version = "0.1.0"
 edition = "2021"
 

@@ -167,30 +167,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "emacs-gtk3-module"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "cairo-rs",
- "emacs",
- "gtk",
- "gtk-sys",
- "pango",
- "pangocairo",
-]
-
-[[package]]
-name = "emacs-gtk3-module-app"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "cairo-rs",
- "gtk",
- "pango",
- "pangocairo",
-]
-
-[[package]]
 name = "emacs-macros"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -243,6 +219,30 @@ checksum = "38e2275cc4e4fc009b0669731a1e5ab7ebf11f469eaede2bab9309a5b4d6057f"
 dependencies = [
  "memoffset",
  "rustc_version 0.4.1",
+]
+
+[[package]]
+name = "flycheck-gtk-tip"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "cairo-rs",
+ "emacs",
+ "gtk",
+ "gtk-sys",
+ "pango",
+ "pangocairo",
+]
+
+[[package]]
+name = "flycheck-gtk-tip-bin"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "cairo-rs",
+ "gtk",
+ "pango",
+ "pangocairo",
 ]
 
 [[package]]
