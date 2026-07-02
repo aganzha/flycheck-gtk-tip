@@ -1,13 +1,40 @@
 ;;; flycheck-gtk-tip.el --- Flycheck GTK tip  -*- lexical-binding: t; -*-
 
-;;; Code:
-(require 'flycheck)
+;; Copyright (C) 2026 Aleksey Ganzha
+
+;; Author: Aleksey Ganzha <aganzha@yandex.ru>
+;; URL: https://github.com/aganzha/flycheck-gtk-tip
+;; Version: 0.1.0
+;; Package-Requires: ((emacs "30.2") (flycheck "36"))
+
+;; This file is not part of GNU Emacs.
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;; Keywords: convenience, flycheck
 
 ;;; Installing:
 ;; (use-package flycheck-gtk-tip
 ;;   :straight (flycheck-gtk-tip
 ;;              :type git
 ;;              :local-repo "/home/aganzha/flycheck-gtk-tip/"))
+
+;;; Commentary:
+;; Provide an error display function to show errors in a separate gtk window.
+
+;;; Code:
+(require 'flycheck)
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   (let ((all-messages ""))

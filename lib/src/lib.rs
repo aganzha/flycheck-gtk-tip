@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Aleksey Ganzha <aganzha@yandex.ru>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 use async_channel::Sender;
 use cairo::{Context, Format, ImageSurface};
 use emacs::{defun, Env, Result, Value};
