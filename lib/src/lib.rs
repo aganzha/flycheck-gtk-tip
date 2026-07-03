@@ -276,6 +276,10 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     window.set_decorated(false);
 
     window.set_resizable(true);
+
+    let screen = GtkWindowExt::screen(&window).unwrap();
+    let rgba_visual = screen.rgba_visual().unwrap();
+    window.set_visual(Some(&rgba_visual));
     window.set_app_paintable(true);
 
     window.set_transient_for(emacs_window.clone().as_ref());
