@@ -74,9 +74,7 @@
 (defun flycheck-gtk-tip-straight-setup ()
   (when (featurep 'pgtk)
     (let* ((module-name
-            (file-name-base
-             (directory-file-name
-              (file-name-directory default-directory))))
+            (file-name-base load-file-name))
            (soname (replace-regexp-in-string "-" "_" (format "lib%s.so" module-name)))
            (sopath
             (expand-file-name
@@ -84,7 +82,6 @@
              (expand-file-name module-name
                                (expand-file-name straight-build-dir
                                                  (expand-file-name "straight" user-emacs-directory))))))
-
       (unless (file-exists-p sopath)
         (url-copy-file (format "https://github.com/aganzha/flycheck-gtk-tip/releases/download/latest/%s" soname) sopath t))
       (module-load sopath)
