@@ -37,6 +37,7 @@
 (require 'flycheck)
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
+  "Display flycheck ERRORS list in gtk window."
   (let ((all-messages ""))
     (dolist (err errors)
       (let ((my-buffer-name (buffer-file-name))
@@ -72,7 +73,8 @@
 
 
 (defun flycheck-gtk-tip-straight-setup ()
-  (when (featurep 'pgtk)
+  "Setup with straight.el."
+  (when (string-match-p "gtk" (emacs-version))
     (let* ((module-name
             (file-name-base load-file-name))
            (soname (replace-regexp-in-string "-" "_" (format "lib%s.so" module-name)))
