@@ -36,6 +36,9 @@
 ;;; Code:
 (require 'flycheck)
 
+(declare-function flycheck-gtk-tip-show "libflycheck_gtk_tip.so")
+(declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so")
+
 (defun flycheck-gtk-tip-display-errors-function (errors)
   "Display flycheck ERRORS list in gtk window."
   (let ((all-messages ""))
