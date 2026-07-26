@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.6
+;; Version: 0.1.7
 ;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
@@ -98,7 +98,7 @@
                      "/releases/download/latest/"
                      soname))
            (sopath (concat (file-name-directory load-file-name) soname)))
-      (message "👿 in let")
+      (message "👿 in let file from: %s to %s ??? %s" release sopath (file-exists-p sopath))
       (unless (file-exists-p sopath)
         (url-copy-file release sopath t))
       (message "🛟 copied file from: %s to %s ??? %s" release sopath (file-exists-p sopath))
