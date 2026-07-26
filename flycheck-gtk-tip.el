@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.0
+;; Version: 0.1.1
 ;; Package-Requires: ((emacs "30.2") (flycheck "36"))
 
 ;; This file is not part of GNU Emacs.
@@ -105,8 +105,9 @@
 (message "🐈 infiiiiiiiiiiiiiiiiiiiile")
 ;;(flycheck-gtk-tip-straight-setup)
 (defun flycheck-gtk-tip-init ()
-  (message "🦴 iniiiiiiiiiiiiiiiiiiiiiiiiiiit")
+  (message "🦴 i am inside flycheck-gtk-tip-init ^")
   )
+(message "💦 i am in file. just before calling init %s" load-file-name)
 (flycheck-gtk-tip-init)
 (provide 'flycheck-gtk-tip)
 ;;; flycheck-gtk-tip.el ends here
