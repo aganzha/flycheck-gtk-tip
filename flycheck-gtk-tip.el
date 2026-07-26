@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.2
+;; Version: 0.1.3
 ;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
@@ -43,8 +43,6 @@
   (declare-function flycheck-error-message nil)
   )
 
-;; (declare-function flycheck-gtk-tip-show "libflycheck_gtk_tip.so")
-;; (declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so")
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   "Display flycheck ERRORS list in gtk window."
@@ -81,37 +79,41 @@
     )
   )
 
-
-(defun flycheck-gtk-tip-straight-setup ()
-  "Setup with straight.el."
+(defun flycheck-gtk-tip-setup ()
   (when (string-match-p "gtk" (emacs-version))
     (let* ((module-name
             (file-name-base load-file-name))
-           (soname (replace-regexp-in-string "-" "_" (format "lib%s.so" module-name)))
-           (sopath
-            (expand-file-name
-             soname
-             (expand-file-name module-name
-                               (expand-file-name straight-build-dir
-                                                 (expand-file-name "straight" user-emacs-directory))))))
+           (backend (vc-git-repository-url load-file-name))
+           (soname (replace-regexp-in-string
+                    "-"
+                    "_"
+                    (format "lib%s.so" module-name)))
+           (release (concat
+                     (string-replace
+                      "git@github.com:"
+                      "https://github.com/"
+                      (string-remove-suffix ".git" backend))
+                     "/releases/download/latest/"
+                     soname))
+           (sopath (concat (file-name-directory load-file-name) soname)))
       (unless (file-exists-p sopath)
-        (url-copy-file (format "https://github.com/aganzha/flycheck-gtk-tip/releases/download/latest/%s" soname) sopath t))
+        (url-copy-file release))
       (module-load sopath)
-
-      ;;(module-load "/home/aganzha/flycheck-gtk-tip/target/release/libflycheck_gtk_tip.so")
       (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
       (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
       (setq flycheck-display-errors-delay 0.2)
-      (advice-add 'keyboard-quit :before
-                  (defun kill-gtk-tip (&rest _)
-                    (flycheck-gtk-tip-hide))))))
-
-(message "🐈 infiiiiiiiiiiiiiiiiiiiile")
-;;(flycheck-gtk-tip-straight-setup)
-(defun flycheck-gtk-tip-init ()
-  (message "🦴 i am inside flycheck-gtk-tip-init ^")
+      (advice-add
+       'keyboard-quit
+       :before
+       (defun kill-gtk-tip (&rest _)
+         (flycheck-gtk-tip-hide))
+       )
+      )
+    )
   )
-(message "💦 i am in file. just before calling init %s" load-file-name)
-(flycheck-gtk-tip-init)
+
+(flycheck-gtk-tip-setup)
+
 (provide 'flycheck-gtk-tip)
+
 ;;; flycheck-gtk-tip.el ends here
