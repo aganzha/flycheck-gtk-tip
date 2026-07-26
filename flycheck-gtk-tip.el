@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.5
+;; Version: 0.1.6
 ;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
@@ -82,6 +82,7 @@
 
 (defun flycheck-gtk-tip-setup ()
   (when (string-match-p "gtk" (emacs-version))
+    (message "🦆 ENTER")
     (let* ((module-name
             (file-name-base load-file-name))
            (backend (vc-git-repository-url load-file-name))
@@ -97,6 +98,7 @@
                      "/releases/download/latest/"
                      soname))
            (sopath (concat (file-name-directory load-file-name) soname)))
+      (message "👿 in let")
       (unless (file-exists-p sopath)
         (url-copy-file release sopath t))
       (message "🛟 copied file from: %s to %s ??? %s" release sopath (file-exists-p sopath))
@@ -114,8 +116,9 @@
       )
     )
   )
-
+(message "🪛 before")
 (flycheck-gtk-tip-setup)
+(message "🪛 after")
 
 (provide 'flycheck-gtk-tip)
 
