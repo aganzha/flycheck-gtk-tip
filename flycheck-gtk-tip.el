@@ -34,10 +34,13 @@
 ;; Provide an error display function to show errors in a separate gtk window.
 
 ;;; Code:
-(require 'flycheck)
 
-(declare-function flycheck-gtk-tip-show "libflycheck_gtk_tip.so")
-(declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so")
+(eval-when-compile
+  (declare-function flycheck-gtk-tip-show "libflycheck_gtk_tip.so")
+  (declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so"))
+
+;; (declare-function flycheck-gtk-tip-show "libflycheck_gtk_tip.so")
+;; (declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so")
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   "Display flycheck ERRORS list in gtk window."
@@ -91,6 +94,7 @@
         (url-copy-file (format "https://github.com/aganzha/flycheck-gtk-tip/releases/download/latest/%s" soname) sopath t))
       (module-load sopath)
 
+      ;;(module-load "/home/aganzha/flycheck-gtk-tip/target/release/libflycheck_gtk_tip.so")
       (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
       (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
       (setq flycheck-display-errors-delay 0.2)
@@ -98,7 +102,11 @@
                   (defun kill-gtk-tip (&rest _)
                     (flycheck-gtk-tip-hide))))))
 
-(flycheck-gtk-tip-straight-setup)
-
+(message "🐈 infiiiiiiiiiiiiiiiiiiiile")
+;;(flycheck-gtk-tip-straight-setup)
+(defun flycheck-gtk-tip-init ()
+  (message "🦴 iniiiiiiiiiiiiiiiiiiiiiiiiiiit")
+  )
+(flycheck-gtk-tip-init)
 (provide 'flycheck-gtk-tip)
 ;;; flycheck-gtk-tip.el ends here
