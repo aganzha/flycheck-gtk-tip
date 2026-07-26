@@ -15,12 +15,11 @@ use pango::FontDescription;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Once, OnceLock, RwLock};
+use std::sync::{OnceLock, RwLock};
 
 emacs::plugin_is_GPL_compatible!();
 
-static INIT: Once = Once::new();
-
+static GTK_INITIALIZED: OnceLock<bool> = OnceLock::new();
 static SENDER: OnceLock<RwLock<Sender<Event>>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
@@ -258,9 +257,13 @@ fn has_titlebar(window: &gtk::Window) -> bool {
 
 #[emacs::module(name = "flycheck-gtk-tip")]
 fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
-    INIT.call_once(|| {
-        let _ = gtk::init();
-    });
+    let initialized = GTK_INITIALIZED.get_or_init(|| gtk::init().is_ok());
+
+    if !*initialized {
+        let _ = env.message("flychek-gtk-tip: failed to initialise gtk");
+        return env.intern("t");
+    }
+    let _ = env.message("flychek-gtk-tip: gtk initialized");
     let (sender, receiver) = async_channel::unbounded();
     SENDER.get_or_init(|| RwLock::new(sender.clone()));
 
