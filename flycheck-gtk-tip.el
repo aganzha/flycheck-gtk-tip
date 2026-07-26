@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.2
+;; Version: 0.1.3
 ;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
@@ -92,7 +92,7 @@
                     (format "lib%s.so" module-name)))
            (sopath (concat (file-name-directory load-file-name) soname)))
       (unless (file-exists-p sopath)
-        (let ((backend (vc-git-repository-url load-file-name))
+        (let* ((backend (vc-git-repository-url load-file-name))
               (release (concat
                         (string-replace
                          "git@github.com:"
