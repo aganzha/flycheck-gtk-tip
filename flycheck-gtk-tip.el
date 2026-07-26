@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.4
+;; Version: 0.1.5
 ;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
@@ -99,7 +99,9 @@
            (sopath (concat (file-name-directory load-file-name) soname)))
       (unless (file-exists-p sopath)
         (url-copy-file release sopath t))
+      (message "🛟 copied file from: %s to %s ??? %s" release sopath (file-exists-p sopath))
       (module-load sopath)
+      (message "⚠️ loaded %s" sopath)
       (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
       (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
       (setq flycheck-display-errors-delay 0.2)
