@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.1
+;; Version: 0.1.2
 ;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
@@ -80,26 +80,27 @@
     )
   )
 
+
 (defun flycheck-gtk-tip-setup ()
   "Setup."
   (when (string-match-p "gtk" (emacs-version))
     (let* ((module-name
             (file-name-base load-file-name))
-           (backend (vc-git-repository-url load-file-name))
            (soname (replace-regexp-in-string
                     "-"
                     "_"
                     (format "lib%s.so" module-name)))
-           (release (concat
-                     (string-replace
-                      "git@github.com:"
-                      "https://github.com/"
-                      (string-remove-suffix ".git" backend))
-                     "/releases/download/latest/"
-                     soname))
            (sopath (concat (file-name-directory load-file-name) soname)))
       (unless (file-exists-p sopath)
-        (url-copy-file release sopath t))
+        (let ((backend (vc-git-repository-url load-file-name))
+              (release (concat
+                        (string-replace
+                         "git@github.com:"
+                         "https://github.com/"
+                         (string-remove-suffix ".git" backend))
+                        "/releases/download/latest/"
+                        soname)))
+          (url-copy-file release sopath t)))
       (module-load sopath)
       (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
       (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
