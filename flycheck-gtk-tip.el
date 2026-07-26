@@ -4,8 +4,8 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.1
-;; Package-Requires: ((emacs "30.2") (flycheck "36"))
+;; Version: 0.1.2
+;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -37,7 +37,11 @@
 
 (eval-when-compile
   (declare-function flycheck-gtk-tip-show "libflycheck_gtk_tip.so")
-  (declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so"))
+  (declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so")
+  (declare-function flycheck-error-buffer nil)
+  (declare-function flycheck-error-line nil)
+  (declare-function flycheck-error-message nil)
+  )
 
 ;; (declare-function flycheck-gtk-tip-show "libflycheck_gtk_tip.so")
 ;; (declare-function flycheck-gtk-tip-hide "libflycheck_gtk_tip.so")
