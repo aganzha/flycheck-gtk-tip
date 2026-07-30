@@ -45,6 +45,51 @@ impl Tip {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct Geometry {
+    padding: f64,
+    radius: f64,
+    arrow_size: f64,
+    arrow_x: f64,
+}
+impl Geometry {
+    fn new(padding: f64, radius: f64, arrow_size: f64, arrow_x: f64) -> Self {
+        Self {
+            padding,
+            radius,
+            arrow_size,
+            arrow_x,
+        }
+    }
+}
+impl Default for Geometry {
+    fn default() -> Self {
+        Geometry {
+            padding: 20.0,
+            radius: 12.0,
+            arrow_size: 14.0,
+            arrow_x: 60.0,
+        }
+    }
+}
+
+pub struct Shadow {
+    padding: f64,
+    steps: i32,
+    dx: f64,
+    dy: f64,
+}
+impl Default for Shadow {
+    fn default() -> Self {
+        Shadow {
+            padding: 24.0,
+            steps: 10,
+            dx: 5.0,
+            dy: 10.0,
+        }
+    }
+}
+
 pub enum Event {
     HideTip,
     ShowTip(Tip),
@@ -53,53 +98,54 @@ pub enum Event {
 pub struct Popover {
     width: f64,
     height: f64,
-    radius: f64,
-    arrow_size: f64,
-    arrow_x: f64,
+    geometry: Geometry,
+    // radius: f64,
+    // arrow_size: f64,
+    // arrow_x: f64,
 }
 
 impl Popover {
     fn draw_path(&self, cr: &cairo::Context) {
-        let arrow_half = self.arrow_size / 2.0;
+        let arrow_half = self.geometry.arrow_size / 2.0;
         cr.new_path();
-        cr.move_to(self.radius, self.arrow_size);
-        cr.line_to(self.arrow_x - arrow_half, self.arrow_size);
-        cr.line_to(self.arrow_x, 0.0);
-        cr.line_to(self.arrow_x + arrow_half, self.arrow_size);
-        cr.line_to(self.width - self.radius, self.arrow_size);
+        cr.move_to(self.geometry.radius, self.geometry.arrow_size);
+        cr.line_to(self.geometry.arrow_x - arrow_half, self.geometry.arrow_size);
+        cr.line_to(self.geometry.arrow_x, 0.0);
+        cr.line_to(self.geometry.arrow_x + arrow_half, self.geometry.arrow_size);
+        cr.line_to(self.width - self.geometry.radius, self.geometry.arrow_size);
 
         cr.arc(
-            self.width - self.radius,
-            self.arrow_size + self.radius,
-            self.radius,
+            self.width - self.geometry.radius,
+            self.geometry.arrow_size + self.geometry.radius,
+            self.geometry.radius,
             -std::f64::consts::FRAC_PI_2,
             0.0,
         );
 
-        cr.line_to(self.width, self.height - self.radius);
+        cr.line_to(self.width, self.height - self.geometry.radius);
         cr.arc(
-            self.width - self.radius,
-            self.height - self.radius,
-            self.radius,
+            self.width - self.geometry.radius,
+            self.height - self.geometry.radius,
+            self.geometry.radius,
             0.0,
             std::f64::consts::FRAC_PI_2,
         );
 
-        cr.line_to(self.radius, self.height);
+        cr.line_to(self.geometry.radius, self.height);
         cr.arc(
-            self.radius,
-            self.height - self.radius,
-            self.radius,
+            self.geometry.radius,
+            self.height - self.geometry.radius,
+            self.geometry.radius,
             std::f64::consts::FRAC_PI_2,
             std::f64::consts::PI,
         );
 
-        cr.line_to(0.0, self.arrow_size + self.radius);
+        cr.line_to(0.0, self.geometry.arrow_size + self.geometry.radius);
 
         cr.arc(
-            self.radius,
-            self.arrow_size + self.radius,
-            self.radius,
+            self.geometry.radius,
+            self.geometry.arrow_size + self.geometry.radius,
+            self.geometry.radius,
             std::f64::consts::PI,
             std::f64::consts::PI * 1.5,
         );
@@ -114,15 +160,8 @@ pub struct TextCanvas {
     width: f64,
     height: f64,
 
-    padding: f64,
-    radius: f64,
-    arrow_size: f64,
-    arrow_x: f64,
-
-    shadow_pad: f64,
-    shadow_steps: i32,
-    dx: f64,
-    dy: f64,
+    geometry: Geometry,
+    shadow: Shadow,
 }
 
 impl Default for TextCanvas {
@@ -134,25 +173,20 @@ impl Default for TextCanvas {
             width: 1.0,
             height: 1.0,
 
-            padding: 20.0,
-            radius: 12.0,
-            arrow_size: 14.0,
-            arrow_x: 60.0,
-
-            shadow_pad: 24.0,
-            shadow_steps: 10,
-            dx: 5.0,
-            dy: 10.0,
+            geometry: Geometry::default(),
+            shadow: Shadow::default(),
         }
     }
 }
 
 impl TextCanvas {
-    fn prepare_text(&mut self, tip: &Tip, max_width: i32) {
+    fn prepare_text(&mut self, tip: &Tip, max_width: i32) -> (f64, f64) {
+        let txt = format!("{}{}", tip.get_level_icon(), tip.text);
+
         let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
         let cr = Context::new(&tmp).unwrap();
         let layout = pangocairo::functions::create_layout(&cr);
-        layout.set_text(&tip.text);
+        layout.set_text(&txt);
         let desc = FontDescription::from_string(&format!("{} {}", &tip.font, &tip.font_size));
         layout.set_font_description(Some(&desc));
         layout.set_width(pango::SCALE * max_width);
@@ -162,7 +196,7 @@ impl TextCanvas {
         let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
         let cr = Context::new(&surface).unwrap();
         let layout = pangocairo::functions::create_layout(&cr);
-        let txt = format!("{}{}", tip.get_level_icon(), tip.text);
+
         layout.set_text(&txt);
         layout.set_font_description(Some(&desc));
         layout.set_width(pango::SCALE * max_width);
@@ -175,19 +209,21 @@ impl TextCanvas {
         self.width = w as f64;
         self.height = h as f64;
         self.bg_color = tip.bg_color.clone();
-        self.bg_color = tip.bg_color.clone();
+        self.fg_color = tip.fg_color.clone();
+        (self.width, self.height)
     }
 
+    // could not belong to canvas!
     fn window_position(&self, tip: &Tip, has_titlebar: bool) -> (i32, i32) {
         let window_x: i32 = {
-            let target_x = (tip.x as f64 - self.arrow_x) as i32;
+            let target_x = (tip.x as f64 - self.geometry.arrow_x) as i32;
             if target_x > 0 {
                 target_x
             } else {
                 0
             }
         };
-        let mut window_y = (tip.y as f64 + self.arrow_size + self.padding) as i32;
+        let mut window_y = (tip.y as f64 + self.geometry.arrow_size + self.geometry.padding) as i32;
         if has_titlebar {
             window_y += TITLE_BAR_HEIGHT;
         }
@@ -195,24 +231,22 @@ impl TextCanvas {
     }
     fn window_size(&self) -> (i32, i32) {
         (
-            (self.full_width() + self.shadow_pad) as i32,
-            (self.full_height() + self.shadow_pad + self.arrow_size) as i32,
+            (self.full_width() + self.shadow.padding) as i32,
+            (self.full_height() + self.shadow.padding + self.geometry.arrow_size) as i32,
         )
     }
     fn popover(&self) -> Popover {
         Popover {
             width: self.full_width(),
             height: self.full_height(),
-            radius: self.radius,
-            arrow_size: self.arrow_size,
-            arrow_x: self.arrow_x,
+            geometry: self.geometry,
         }
     }
     fn full_width(&self) -> f64 {
-        self.width + self.padding * 2.0
+        self.width + self.geometry.padding * 2.0
     }
     fn full_height(&self) -> f64 {
-        self.height + self.padding * 2.0
+        self.height + self.geometry.padding * 2.0
     }
     fn draw_popover(&self, cr: &cairo::Context) {
         self.popover().draw_path(cr);
@@ -228,27 +262,25 @@ impl TextCanvas {
         cr.stroke();
     }
     fn draw_shadow(&self, cr: &cairo::Context) {
-        for i in 0..self.shadow_steps {
-            let t = i as f64 / (self.shadow_steps as f64 - 1.0);
+        for i in 0..self.shadow.steps {
+            let t = i as f64 / (self.shadow.steps as f64 - 1.0);
 
-            let pad = t * self.padding;
+            let pad = t * self.geometry.padding;
 
             let w2 = self.full_width() + 2.0 * pad;
             let h2 = self.full_height() + 2.0 * pad;
-            let r2 = (self.radius + pad).max(0.0);
-            let a2 = (self.arrow_size + pad).max(0.0);
-            let arrow_x2 = self.arrow_x + pad;
+            let r2 = (self.geometry.radius + pad).max(0.0);
+            let a2 = (self.geometry.arrow_size + pad).max(0.0);
+            let arrow_x2 = self.geometry.arrow_x + pad;
 
             let alpha = (1.0 - t).powi(2) * 0.20;
             cr.save();
-            cr.translate(self.dx - pad, self.dy - pad);
+            cr.translate(self.shadow.dx - pad, self.shadow.dy - pad);
             cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here
             let popover = Popover {
                 width: w2,
                 height: h2,
-                radius: r2,
-                arrow_x: arrow_x2,
-                arrow_size: a2,
+                geometry: Geometry::new(self.geometry.padding, r2, arrow_x2, a2),
             };
             popover.draw_path(cr);
             cr.fill();
@@ -270,6 +302,18 @@ fn has_titlebar(window: &gtk::Window) -> bool {
 
 #[emacs::module(name = "flycheck-gtk-tip")]
 fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
+    // let padding_value = env.intern("flycheck-gtk-tip-padding")?;
+    // let padding = padding_value.into_rust::<i32>();
+    // eprintln!("😲 ........... {:?}", padding);
+
+    // Intern the symbol name
+    let padding_sym = env.intern("flycheck-gtk-tip-padding")?;
+    // Get the symbol's value (the actual integer)
+    let padding_value = env.call("symbol-value", [padding_sym])?;
+    // Convert to Rust i32
+    let padding = padding_value.into_rust::<i32>()?;
+    eprintln!("😲 ........... {:?}", padding);
+
     let initialized = GTK_INITIALIZED.get_or_init(|| gtk::init().is_ok());
 
     if !*initialized {
@@ -326,8 +370,8 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
 
             cr.set_source_surface(
                 &*canvas.surface,
-                canvas.padding,
-                canvas.padding + canvas.arrow_size,
+                canvas.geometry.padding,
+                canvas.geometry.padding + canvas.geometry.arrow_size,
             )
             .unwrap();
             cr.paint().unwrap();
@@ -366,9 +410,8 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                         .unwrap_or((640, 480, true));
                     let max_width = emacs_width - tip.x;
 
-                    {
-                        canvas.borrow_mut().prepare_text(&tip, max_width);
-                    }
+                    let (canvas_width, canvas_height) =
+                        { canvas.borrow_mut().prepare_text(&tip, max_width) };
                     eprintln!("⚓ show tip!");
                     window.show_all();
                     area.queue_draw();
