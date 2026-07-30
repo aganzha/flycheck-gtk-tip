@@ -32,9 +32,27 @@ pub struct Tip {
     fg_color: String,
     bg_color: String,
     level: String,
+    geometry: Geometry,
 }
 
 impl Tip {
+    fn window_position(&self, has_titlebar: bool) -> (i32, i32) {
+        let window_x: i32 = {
+            let target_x = (self.x as f64 - self.geometry.arrow_x) as i32;
+            if target_x > 0 {
+                target_x
+            } else {
+                0
+            }
+        };
+        let mut window_y =
+            (self.y as f64 + self.geometry.arrow_size + self.geometry.padding) as i32;
+        if has_titlebar {
+            window_y += TITLE_BAR_HEIGHT;
+        }
+        (window_x, window_y)
+    }
+
     fn get_level_icon(&self) -> &'static str {
         match self.level.as_str() {
             "error" => "🛑 ",
@@ -45,13 +63,14 @@ impl Tip {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Geometry {
     padding: f64,
     radius: f64,
     arrow_size: f64,
     arrow_x: f64,
 }
+
 impl Geometry {
     fn new(padding: f64, radius: f64, arrow_size: f64, arrow_x: f64) -> Self {
         Self {
@@ -60,6 +79,26 @@ impl Geometry {
             arrow_size,
             arrow_x,
         }
+    }
+    fn from_env(env: &Env) -> Result<Self> {
+        let padding_sym = env.intern("flycheck-gtk-tip-padding")?;
+        let padding_value = env.call("symbol-value", [padding_sym])?;
+        let padding = padding_value.into_rust::<u32>()? as f64;
+        let radius_sym = env.intern("flycheck-gtk-tip-radius")?;
+        let radius_value = env.call("symbol-value", [radius_sym])?;
+        let radius = radius_value.into_rust::<u32>()? as f64;
+        let arrow_size_sym = env.intern("flycheck-gtk-tip-arrow-size")?;
+        let arrow_size_value = env.call("symbol-value", [arrow_size_sym])?;
+        let arrow_size = arrow_size_value.into_rust::<u32>()? as f64;
+        let arrow_x_sym = env.intern("flycheck-gtk-tip-arrow-x")?;
+        let arrow_x_value = env.call("symbol-value", [arrow_x_sym])?;
+        let arrow_x = arrow_x_value.into_rust::<u32>()? as f64;
+        Ok(Self {
+            padding,
+            radius,
+            arrow_size,
+            arrow_x,
+        })
     }
 }
 impl Default for Geometry {
@@ -213,22 +252,6 @@ impl TextCanvas {
         (self.width, self.height)
     }
 
-    // could not belong to canvas!
-    fn window_position(&self, tip: &Tip, has_titlebar: bool) -> (i32, i32) {
-        let window_x: i32 = {
-            let target_x = (tip.x as f64 - self.geometry.arrow_x) as i32;
-            if target_x > 0 {
-                target_x
-            } else {
-                0
-            }
-        };
-        let mut window_y = (tip.y as f64 + self.geometry.arrow_size + self.geometry.padding) as i32;
-        if has_titlebar {
-            window_y += TITLE_BAR_HEIGHT;
-        }
-        (window_x, window_y)
-    }
     fn window_size(&self) -> (i32, i32) {
         (
             (self.full_width() + self.shadow.padding) as i32,
@@ -302,18 +325,6 @@ fn has_titlebar(window: &gtk::Window) -> bool {
 
 #[emacs::module(name = "flycheck-gtk-tip")]
 fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
-    // let padding_value = env.intern("flycheck-gtk-tip-padding")?;
-    // let padding = padding_value.into_rust::<i32>();
-    // eprintln!("😲 ........... {:?}", padding);
-
-    // Intern the symbol name
-    let padding_sym = env.intern("flycheck-gtk-tip-padding")?;
-    // Get the symbol's value (the actual integer)
-    let padding_value = env.call("symbol-value", [padding_sym])?;
-    // Convert to Rust i32
-    let padding = padding_value.into_rust::<i32>()?;
-    eprintln!("😲 ........... {:?}", padding);
-
     let initialized = GTK_INITIALIZED.get_or_init(|| gtk::init().is_ok());
 
     if !*initialized {
@@ -410,13 +421,15 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                         .unwrap_or((640, 480, true));
                     let max_width = emacs_width - tip.x;
 
-                    let (canvas_width, canvas_height) =
-                        { canvas.borrow_mut().prepare_text(&tip, max_width) };
+                    let mut canvas = canvas.borrow_mut();
+                    canvas.geometry = tip.geometry;
+                    canvas.prepare_text(&tip, max_width);
+
                     eprintln!("⚓ show tip!");
                     window.show_all();
                     area.queue_draw();
 
-                    let (window_x, window_y) = canvas.borrow().window_position(&tip, has_titlebar);
+                    let (window_x, window_y) = tip.window_position(has_titlebar);
                     window.move_(window_x, window_y);
 
                     // Fade In effect
@@ -475,6 +488,7 @@ fn show(
                 bg_color,
                 fg_color,
                 level,
+                geometry: Geometry::from_env(env)?,
             }))
             .expect("cant send through channel");
     }

@@ -44,6 +44,25 @@
   (declare-function vc-git-repository-url nil)
   )
 
+(defcustom flycheck-gtk-tip-padding 20
+  "Padding for tip popup."
+  :type 'integer
+  :group 'flycheck-gtk-tip)
+
+(defcustom flycheck-gtk-tip-radius 12
+  "Popup border radius."
+  :type 'integer
+  :group 'flycheck-gtk-tip)
+
+(defcustom flycheck-gtk-tip-arrow-size 14
+  "Arrow size (height)."
+  :type 'integer
+  :group 'flycheck-gtk-tip)
+
+(defcustom flycheck-gtk-tip-arrow-x 60
+  "Horisontal position of arrow."
+  :type 'integer
+  :group 'flycheck-gtk-tip)
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   "Display flycheck ERRORS list in gtk window."
