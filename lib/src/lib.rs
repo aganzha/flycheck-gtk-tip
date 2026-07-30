@@ -31,6 +31,18 @@ pub struct Tip {
     font_size: f64,
     fg_color: String,
     bg_color: String,
+    level: String,
+}
+
+impl Tip {
+    fn get_level_icon(&self) -> &'static str {
+        match self.level.as_str() {
+            "error" => "🛑 ",
+            "warning" => "⚠️ ",
+            "info" => "ℹ️ ",
+            _ => "",
+        }
+    }
 }
 
 pub enum Event {
@@ -150,7 +162,8 @@ impl TextCanvas {
         let surface = ImageSurface::create(Format::ARgb32, w, h).unwrap();
         let cr = Context::new(&surface).unwrap();
         let layout = pangocairo::functions::create_layout(&cr);
-        layout.set_text(&tip.text);
+        let txt = format!("{}{}", tip.get_level_icon(), tip.text);
+        layout.set_text(&txt);
         layout.set_font_description(Some(&desc));
         layout.set_width(pango::SCALE * max_width);
 
@@ -405,6 +418,7 @@ fn show(
     font_size: f64,
     fg_color: String,
     bg_color: String,
+    level: String,
 ) -> Result<Value<'_>> {
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
@@ -417,6 +431,7 @@ fn show(
                 font_size,
                 bg_color,
                 fg_color,
+                level,
             }))
             .expect("cant send through channel");
     }

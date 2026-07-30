@@ -47,17 +47,19 @@
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   "Display flycheck ERRORS list in gtk window."
-  (let ((all-messages ""))
+  (let ((all-messages "")
+        (error-level))
     (dolist (err errors)
       (let ((my-buffer-name (buffer-file-name))
             (err-buffer-name (buffer-file-name (flycheck-error-buffer err)))
             (my-line (line-number-at-pos))
             (err-line (flycheck-error-line err))
             (message (flycheck-error-message err))
-            )
+            (level (flycheck-error-level err)))
         (if (and (eq my-buffer-name err-buffer-name)
                  (eq my-line err-line))
-            (setq all-messages (concat all-messages message "\n"))
+            (progn (setq all-messages (concat all-messages message "\n"))
+                   (setq error-level (symbol-name level)))
           )))
     (if (not (string-empty-p all-messages))
         (let ((pos (window-absolute-pixel-position))
@@ -74,6 +76,7 @@
            (/ font-size font-scale)
            fg-color
            bg-color
+           error-level
            )
           )
       )
