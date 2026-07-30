@@ -289,6 +289,14 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
 
     window.move_(0, 0);
 
+    emacs_window.clone().map(|w| {
+        let tip_window = window.clone();
+        w.connect_focus_out_event(move |_win, _event| {
+            eprintln!("🎯 emacs focus out");
+            tip_window.hide();
+            gtk::glib::signal::Propagation::Proceed
+        })
+    });
     let area = gtk::DrawingArea::new();
 
     area.connect_draw({
@@ -348,7 +356,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     {
                         canvas.borrow_mut().prepare_text(&tip, max_width);
                     }
-
+                    eprintln!("⚓ show tip!");
                     window.show_all();
                     area.queue_draw();
 
