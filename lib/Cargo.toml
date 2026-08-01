@@ -1,6 +1,6 @@
 [package]
 name = "flycheck-gtk-tip"
-version = "0.1.0"
+version = "0.1.7"
 edition = "2021"
 license = "GPL-3.0-or-later"
 authors = ["Aleksey Ganzha <aganzha@yandex.ru>"]
