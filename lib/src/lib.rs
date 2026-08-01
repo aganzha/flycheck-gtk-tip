@@ -145,6 +145,7 @@ pub struct Popover {
 
 impl Popover {
     fn draw_path(&self, cr: &cairo::Context) {
+        cr.save();
         let arrow_half = self.geometry.arrow_size / 2.0;
         cr.new_path();
         cr.move_to(self.geometry.radius, self.geometry.arrow_size);
@@ -189,6 +190,7 @@ impl Popover {
             std::f64::consts::PI * 1.5,
         );
         cr.close_path();
+        cr.restore();
     }
 }
 
@@ -272,7 +274,8 @@ impl TextCanvas {
         self.height + self.geometry.padding * 2.0
     }
     fn draw_popover(&self, cr: &cairo::Context) {
-        self.popover().draw_path(cr);
+        let popover = self.popover();
+        popover.draw_path(cr);
 
         let bg_rgba = gdk::RGBA::parse(&self.bg_color).unwrap();
 
@@ -303,7 +306,7 @@ impl TextCanvas {
             let popover = Popover {
                 width: w2,
                 height: h2,
-                geometry: Geometry::new(self.geometry.padding, r2, arrow_x2, a2),
+                geometry: Geometry::new(self.geometry.padding, r2, a2, arrow_x2),
             };
             popover.draw_path(cr);
             cr.fill();
@@ -372,13 +375,11 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
         let window = window.clone();
         move |_, cr| {
             let canvas = canvas.borrow();
-            canvas.draw_shadow(cr);
 
             let (window_w, window_h) = canvas.window_size();
             window.resize(window_w, window_h);
-
+            canvas.draw_shadow(cr);
             canvas.draw_popover(cr);
-
             cr.set_source_surface(
                 &*canvas.surface,
                 canvas.geometry.padding,
@@ -425,12 +426,15 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     canvas.geometry = tip.geometry;
                     canvas.prepare_text(&tip, max_width);
 
-                    eprintln!("⚓ show tip!");
+                    let (window_x, window_y) = tip.window_position(has_titlebar);
+                    eprintln!(
+                        "🐈 moving window to {} {} titlebar? {}",
+                        window_x, window_y, has_titlebar
+                    );
+                    window.move_(window_x, window_y);
+
                     window.show_all();
                     area.queue_draw();
-
-                    let (window_x, window_y) = tip.window_position(has_titlebar);
-                    window.move_(window_x, window_y);
 
                     // Fade In effect
                     window.set_opacity(0.5);
