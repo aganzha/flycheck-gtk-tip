@@ -36,6 +36,7 @@ pub struct Tip {
     bg_color: String,
     level: String,
     has_titlebar: bool,
+    vertical_offset: i32,
     geometry: Geometry,
     shadow: Shadow,
 }
@@ -50,8 +51,9 @@ impl Tip {
                 0
             }
         };
-        let mut window_y =
-            (self.y as f64 + self.geometry.arrow_size + self.geometry.padding) as i32;
+        let mut window_y = (self.y as f64 + self.geometry.arrow_size + self.geometry.padding)
+            as i32
+            + self.vertical_offset;
         if has_titlebar && self.has_titlebar {
             window_y += TITLE_BAR_HEIGHT;
         }
@@ -119,7 +121,6 @@ pub struct Shadow {
 
 impl Shadow {
     fn from_env(env: &Env) -> Result<Self> {
-
         let steps_sym = env.intern("flycheck-gtk-tip-shadow-steps")?;
         let steps_value = env.call("symbol-value", [steps_sym])?;
         let steps = steps_value.into_rust::<i32>()?;
@@ -486,6 +487,9 @@ fn show(
         let sender = lock.read().unwrap();
         let undecorated = env.intern("undecorated")?;
         let is_undecorated = env.call("frame-parameter", ((), undecorated))?;
+        let offset_sym = env.intern("flycheck-gtk-tip-vertical-offset")?;
+        let offset_value = env.call("symbol-value", [offset_sym])?;
+
         sender
             .send_blocking(Event::ShowTip(Tip {
                 x,
@@ -497,6 +501,7 @@ fn show(
                 fg_color,
                 level,
                 has_titlebar: is_undecorated == *nil,
+                vertical_offset: offset_value.into_rust()?,
                 geometry: Geometry::from_env(env)?,
                 shadow: Shadow::from_env(env)?,
             }))
