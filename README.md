@@ -15,7 +15,9 @@ One of them: ```flycheck-gtk-tip-vertical-offset``` could be used to adjust popu
 
 ## Uninstalling/Updating
 Just delete folder ```~/.emacs.d/elpa/flycheck-gtk-tip```.
-Having ```elisp
+Having 
+```elisp
 (use-package flycheck-gtk-tip
   :vc (:url "https://github.com/aganzha/flycheck-gtk-tip"))
-``` in your emacs will bring latest version from github.
+```
+in your .emacs/init.el will bring latest version from github.
