@@ -1,4 +1,6 @@
-+## Installing
+>Nice gtk tooltips for Flycheck. Works on GTK builds (Linux: Wayland/X11).
+
+## Installing
 ```elisp
 (use-package flycheck-gtk-tip
   :vc (:url "https://github.com/aganzha/flycheck-gtk-tip"))
