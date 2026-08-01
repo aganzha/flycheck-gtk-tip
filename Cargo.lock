@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "flycheck-gtk-tip"
-version = "0.1.0"
+version = "0.1.7"
 dependencies = [
  "async-channel",
  "cairo-rs",
@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "flycheck-gtk-tip-bin"
-version = "0.1.0"
+version = "0.1.7"
 dependencies = [
  "async-channel",
  "cairo-rs",
