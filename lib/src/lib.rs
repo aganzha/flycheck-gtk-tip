@@ -18,6 +18,9 @@ use std::rc::Rc;
 use std::sync::{OnceLock, RwLock};
 
 emacs::plugin_is_GPL_compatible!();
+use emacs::use_symbols;
+
+use_symbols! { nil }
 
 static GTK_INITIALIZED: OnceLock<bool> = OnceLock::new();
 static SENDER: OnceLock<RwLock<Sender<Event>>> = OnceLock::new();
@@ -32,6 +35,7 @@ pub struct Tip {
     fg_color: String,
     bg_color: String,
     level: String,
+    has_titlebar: bool,
     geometry: Geometry,
 }
 
@@ -47,7 +51,7 @@ impl Tip {
         };
         let mut window_y =
             (self.y as f64 + self.geometry.arrow_size + self.geometry.padding) as i32;
-        if has_titlebar {
+        if has_titlebar && self.has_titlebar {
             window_y += TITLE_BAR_HEIGHT;
         }
         (window_x, window_y)
@@ -72,14 +76,6 @@ pub struct Geometry {
 }
 
 impl Geometry {
-    fn new(padding: f64, radius: f64, arrow_size: f64, arrow_x: f64) -> Self {
-        Self {
-            padding,
-            radius,
-            arrow_size,
-            arrow_x,
-        }
-    }
     fn from_env(env: &Env) -> Result<Self> {
         let padding_sym = env.intern("flycheck-gtk-tip-padding")?;
         let padding_value = env.call("symbol-value", [padding_sym])?;
@@ -163,7 +159,6 @@ impl Default for TextCanvas {
 impl TextCanvas {
     fn prepare_text(&mut self, tip: &Tip, max_width: i32) -> (f64, f64) {
         let txt = format!("{}{}", tip.get_level_icon(), tip.text);
-
         let tmp = ImageSurface::create(Format::ARgb32, 1, 1).unwrap();
         let cr = Context::new(&tmp).unwrap();
         let layout = pangocairo::functions::create_layout(&cr);
@@ -338,7 +333,6 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
     emacs_window.clone().map(|w| {
         let tip_window = window.clone();
         w.connect_focus_out_event(move |_win, _event| {
-            eprintln!("🎯 emacs focus out");
             tip_window.hide();
             gtk::glib::signal::Propagation::Proceed
         })
@@ -402,10 +396,6 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
                     canvas.prepare_text(&tip, max_width);
 
                     let (window_x, window_y) = tip.window_position(has_titlebar);
-                    eprintln!(
-                        "🐈 moving window to {} {} titlebar? {}",
-                        window_x, window_y, has_titlebar
-                    );
                     window.move_(window_x, window_y);
 
                     window.show_all();
@@ -457,6 +447,8 @@ fn show(
 ) -> Result<Value<'_>> {
     if let Some(lock) = SENDER.get() {
         let sender = lock.read().unwrap();
+        let undecorated = env.intern("undecorated")?;
+        let is_undecorated = env.call("frame-parameter", ((), undecorated))?;
         sender
             .send_blocking(Event::ShowTip(Tip {
                 x,
@@ -467,6 +459,7 @@ fn show(
                 bg_color,
                 fg_color,
                 level,
+                has_titlebar: is_undecorated == *nil,
                 geometry: Geometry::from_env(env)?,
             }))
             .expect("cant send through channel");
