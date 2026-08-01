@@ -6,6 +6,7 @@
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
 ;; Version: 0.1.7
 ;; Package-Requires: ((emacs "30.2"))
+;; Keywords: convenience, flycheck
 
 ;; This file is not part of GNU Emacs.
 
@@ -24,14 +25,14 @@
 
 ;; Keywords: convenience, flycheck
 
-;;; Installing:
-;; (use-package flycheck-gtk-tip
-;;   :straight (flycheck-gtk-tip
-;;              :type git
-;;              :local-repo "/home/aganzha/flycheck-gtk-tip/"))
 
 ;;; Commentary:
-;; Provide an error display function to show errors in a separate gtk window.
+;; Display Flycheck errors in a separate GTK tooltip window.
+;; Works on GTK builds (Linux: Wayland/X11).
+
+;;; Installing:
+;;; (use-package flycheck-gtk-tip
+;;;   :vc (:url "https://github.com/aganzha/flycheck-gtk-tip"))
 
 ;;; Code:
 
