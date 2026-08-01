@@ -134,66 +134,6 @@ pub enum Event {
     ShowTip(Tip),
 }
 
-pub struct Popover {
-    width: f64,
-    height: f64,
-    geometry: Geometry,
-    // radius: f64,
-    // arrow_size: f64,
-    // arrow_x: f64,
-}
-
-impl Popover {
-    fn draw_path(&self, cr: &cairo::Context) {
-        cr.save();
-        let arrow_half = self.geometry.arrow_size / 2.0;
-        cr.new_path();
-        cr.move_to(self.geometry.radius, self.geometry.arrow_size);
-        cr.line_to(self.geometry.arrow_x - arrow_half, self.geometry.arrow_size);
-        cr.line_to(self.geometry.arrow_x, 0.0);
-        cr.line_to(self.geometry.arrow_x + arrow_half, self.geometry.arrow_size);
-        cr.line_to(self.width - self.geometry.radius, self.geometry.arrow_size);
-
-        cr.arc(
-            self.width - self.geometry.radius,
-            self.geometry.arrow_size + self.geometry.radius,
-            self.geometry.radius,
-            -std::f64::consts::FRAC_PI_2,
-            0.0,
-        );
-
-        cr.line_to(self.width, self.height - self.geometry.radius);
-        cr.arc(
-            self.width - self.geometry.radius,
-            self.height - self.geometry.radius,
-            self.geometry.radius,
-            0.0,
-            std::f64::consts::FRAC_PI_2,
-        );
-
-        cr.line_to(self.geometry.radius, self.height);
-        cr.arc(
-            self.geometry.radius,
-            self.height - self.geometry.radius,
-            self.geometry.radius,
-            std::f64::consts::FRAC_PI_2,
-            std::f64::consts::PI,
-        );
-
-        cr.line_to(0.0, self.geometry.arrow_size + self.geometry.radius);
-
-        cr.arc(
-            self.geometry.radius,
-            self.geometry.arrow_size + self.geometry.radius,
-            self.geometry.radius,
-            std::f64::consts::PI,
-            std::f64::consts::PI * 1.5,
-        );
-        cr.close_path();
-        cr.restore();
-    }
-}
-
 pub struct TextCanvas {
     surface: ImageSurface,
     fg_color: String,
@@ -260,13 +200,60 @@ impl TextCanvas {
             (self.full_height() + self.shadow.padding + self.geometry.arrow_size) as i32,
         )
     }
-    fn popover(&self) -> Popover {
-        Popover {
-            width: self.full_width(),
-            height: self.full_height(),
-            geometry: self.geometry,
-        }
+
+    fn draw(&self, cr: &cairo::Context) {
+        let width = self.full_width();
+        let height = self.full_height();
+        let geometry = self.geometry;
+
+        cr.save();
+        let arrow_half = geometry.arrow_size / 2.0;
+        cr.new_path();
+        cr.move_to(geometry.radius, geometry.arrow_size);
+        cr.line_to(geometry.arrow_x - arrow_half, geometry.arrow_size);
+        cr.line_to(geometry.arrow_x, 0.0);
+        cr.line_to(geometry.arrow_x + arrow_half, geometry.arrow_size);
+        cr.line_to(width - geometry.radius, geometry.arrow_size);
+
+        cr.arc(
+            width - geometry.radius,
+            geometry.arrow_size + self.geometry.radius,
+            geometry.radius,
+            -std::f64::consts::FRAC_PI_2,
+            0.0,
+        );
+
+        cr.line_to(width, height - self.geometry.radius);
+        cr.arc(
+            width - geometry.radius,
+            height - geometry.radius,
+            geometry.radius,
+            0.0,
+            std::f64::consts::FRAC_PI_2,
+        );
+
+        cr.line_to(geometry.radius, height);
+        cr.arc(
+            geometry.radius,
+            height - geometry.radius,
+            geometry.radius,
+            std::f64::consts::FRAC_PI_2,
+            std::f64::consts::PI,
+        );
+
+        cr.line_to(0.0, geometry.arrow_size + geometry.radius);
+
+        cr.arc(
+            geometry.radius,
+            geometry.arrow_size + geometry.radius,
+            geometry.radius,
+            std::f64::consts::PI,
+            std::f64::consts::PI * 1.5,
+        );
+        cr.close_path();
+        cr.restore();
     }
+
     fn full_width(&self) -> f64 {
         self.width + self.geometry.padding * 2.0
     }
@@ -274,8 +261,7 @@ impl TextCanvas {
         self.height + self.geometry.padding * 2.0
     }
     fn draw_popover(&self, cr: &cairo::Context) {
-        let popover = self.popover();
-        popover.draw_path(cr);
+        self.draw(cr);
 
         let bg_rgba = gdk::RGBA::parse(&self.bg_color).unwrap();
 
@@ -289,26 +275,15 @@ impl TextCanvas {
     }
     fn draw_shadow(&self, cr: &cairo::Context) {
         for i in 0..self.shadow.steps {
-            let t = i as f64 / (self.shadow.steps as f64 - 1.0);
+            let t = i as f64 / self.shadow.steps as f64;
 
             let pad = t * self.geometry.padding;
-
-            let w2 = self.full_width() + 2.0 * pad;
-            let h2 = self.full_height() + 2.0 * pad;
-            let r2 = (self.geometry.radius + pad).max(0.0);
-            let a2 = (self.geometry.arrow_size + pad).max(0.0);
-            let arrow_x2 = self.geometry.arrow_x + pad;
-
             let alpha = (1.0 - t).powi(2) * 0.20;
             cr.save();
             cr.translate(self.shadow.dx - pad, self.shadow.dy - pad);
             cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here
-            let popover = Popover {
-                width: w2,
-                height: h2,
-                geometry: Geometry::new(self.geometry.padding, r2, a2, arrow_x2),
-            };
-            popover.draw_path(cr);
+
+            self.draw(cr);
             cr.fill();
             cr.restore();
         }
