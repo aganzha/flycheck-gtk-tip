@@ -1,10 +1,11 @@
-## Installing
++## Installing
 ```elisp
 (use-package flycheck-gtk-tip
   :vc (:url "https://github.com/aganzha/flycheck-gtk-tip"))
 ```
-<img width="1612" height="1080" alt="image" src="https://github.com/user-attachments/assets/31a55970-0067-4cc5-87ee-62926c282b0f" />
-<img width="1612" height="1080" alt="image" src="https://github.com/user-attachments/assets/e819f63d-2f3b-492b-a53a-efd8fa14e004" />
+<img width="1920" height="1052" alt="dark theme" src="https://github.com/user-attachments/assets/31274bf6-120e-45f1-a740-fb9ca41bbbd5" />
+
+<img width="1920" height="1052" alt="light-theme" src="https://github.com/user-attachments/assets/395b2640-686d-4597-b51a-e0f2dc95d93c" />
 
 ## Using
 Pop Up tip appears when cursor is on error string. `C-g` to force close tip.
