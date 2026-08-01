@@ -37,6 +37,7 @@ pub struct Tip {
     level: String,
     has_titlebar: bool,
     geometry: Geometry,
+    shadow: Shadow,
 }
 
 impl Tip {
@@ -108,12 +109,47 @@ impl Default for Geometry {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Shadow {
     padding: f64,
     steps: i32,
     dx: f64,
     dy: f64,
+    color: gdk::RGBA,
 }
+
+impl Shadow {
+    fn from_env(env: &Env) -> Result<Self> {
+        let padding_sym = env.intern("flycheck-gtk-tip-shadow-padding")?;
+        let padding_value = env.call("symbol-value", [padding_sym])?;
+        let padding = padding_value.into_rust::<u32>()? as f64;
+
+        let steps_sym = env.intern("flycheck-gtk-tip-shadow-steps")?;
+        let steps_value = env.call("symbol-value", [steps_sym])?;
+        let steps = steps_value.into_rust::<i32>()?;
+
+        let dx_sym = env.intern("flycheck-gtk-tip-shadow-dx")?;
+        let dx_value = env.call("symbol-value", [dx_sym])?;
+        let dx = dx_value.into_rust::<u32>()? as f64;
+
+        let dy_sym = env.intern("flycheck-gtk-tip-shadow-dy")?;
+        let dy_value = env.call("symbol-value", [dy_sym])?;
+        let dy = dy_value.into_rust::<u32>()? as f64;
+
+        let color_sym = env.intern("flycheck-gtk-tip-shadow-color")?;
+        let color_value = env.call("symbol-value", [color_sym])?;
+        let color = color_value.into_rust::<String>()?;
+
+        Ok(Self {
+            padding,
+            steps,
+            dx,
+            dy,
+            color: gdk::RGBA::parse(&color)?,
+        })
+    }
+}
+
 impl Default for Shadow {
     fn default() -> Self {
         Shadow {
@@ -121,6 +157,7 @@ impl Default for Shadow {
             steps: 10,
             dx: 5.0,
             dy: 10.0,
+            color: gdk::RGBA::new(0.0, 0.0, 0.0, 1.0),
         }
     }
 }
@@ -276,7 +313,12 @@ impl TextCanvas {
             let alpha = (1.0 - t).powi(2) * 0.20;
             cr.save();
             cr.translate(self.shadow.dx - pad, self.shadow.dy - pad);
-            cr.set_source_rgba(0.2, 0.0, 0.0, alpha); // <- shadow color here
+            cr.set_source_rgba(
+                self.shadow.color.red(),
+                self.shadow.color.green(),
+                self.shadow.color.blue(),
+                alpha,
+            );
 
             self.draw(cr);
             cr.fill();
@@ -393,6 +435,7 @@ fn init<'a>(env: &'a Env) -> Result<Value<'a>> {
 
                     let mut canvas = canvas.borrow_mut();
                     canvas.geometry = tip.geometry;
+                    canvas.shadow = tip.shadow;
                     canvas.prepare_text(&tip, max_width);
 
                     let (window_x, window_y) = tip.window_position(has_titlebar);
@@ -461,6 +504,7 @@ fn show(
                 level,
                 has_titlebar: is_undecorated == *nil,
                 geometry: Geometry::from_env(env)?,
+                shadow: Shadow::from_env(env)?,
             }))
             .expect("cant send through channel");
     }
