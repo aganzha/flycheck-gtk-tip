@@ -111,7 +111,6 @@ impl Default for Geometry {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Shadow {
-    padding: f64,
     steps: i32,
     dx: f64,
     dy: f64,
@@ -120,9 +119,6 @@ pub struct Shadow {
 
 impl Shadow {
     fn from_env(env: &Env) -> Result<Self> {
-        let padding_sym = env.intern("flycheck-gtk-tip-shadow-padding")?;
-        let padding_value = env.call("symbol-value", [padding_sym])?;
-        let padding = padding_value.into_rust::<u32>()? as f64;
 
         let steps_sym = env.intern("flycheck-gtk-tip-shadow-steps")?;
         let steps_value = env.call("symbol-value", [steps_sym])?;
@@ -141,7 +137,6 @@ impl Shadow {
         let color = color_value.into_rust::<String>()?;
 
         Ok(Self {
-            padding,
             steps,
             dx,
             dy,
@@ -153,10 +148,9 @@ impl Shadow {
 impl Default for Shadow {
     fn default() -> Self {
         Shadow {
-            padding: 24.0,
             steps: 10,
-            dx: 5.0,
-            dy: 10.0,
+            dx: 15.0,
+            dy: 15.0,
             color: gdk::RGBA::new(0.0, 0.0, 0.0, 1.0),
         }
     }
@@ -228,8 +222,8 @@ impl TextCanvas {
 
     fn window_size(&self) -> (i32, i32) {
         (
-            (self.full_width() + self.shadow.padding) as i32,
-            (self.full_height() + self.shadow.padding + self.geometry.arrow_size) as i32,
+            (self.full_width() + self.geometry.padding) as i32,
+            (self.full_height() + self.geometry.padding + self.geometry.arrow_size) as i32,
         )
     }
 

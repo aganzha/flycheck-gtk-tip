@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.4
+;; Version: 0.1.5
 ;; Package-Requires: ((emacs "30.2"))
 
 ;; This file is not part of GNU Emacs.
@@ -64,23 +64,19 @@
   :type 'integer
   :group 'flycheck-gtk-tip)
 
-(defcustom flycheck-gtk-tip-shadow-padding 24
-  "Shadow padding."
-  :type 'integer
-  :group 'flycheck-gtk-tip)
 
 (defcustom flycheck-gtk-tip-shadow-steps 10
   "Number of times path is drawn to form shadow."
   :type 'integer
   :group 'flycheck-gtk-tip)
 
-(defcustom flycheck-gtk-tip-shadow-dx 5
+(defcustom flycheck-gtk-tip-shadow-dx 10
   "Shadow horisontal offset."
   :type 'integer
   :group 'flycheck-gtk-tip)
 
 
-(defcustom flycheck-gtk-tip-shadow-dy 5
+(defcustom flycheck-gtk-tip-shadow-dy 10
   "Shadow vertical offset."
   :type 'integer
   :group 'flycheck-gtk-tip)
@@ -91,7 +87,6 @@
   :group 'flycheck-gtk-tip)
 
 
-(message ".......................🦴")
 
 (defun flycheck-gtk-tip-display-errors-function (errors)
   "Display flycheck ERRORS list in gtk window."
@@ -152,7 +147,6 @@
                         "/releases/download/latest/"
                         soname)))
           (url-copy-file release sopath t)))
-      (message "🌻 looooooooooooooad")
       (module-load sopath)
       (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
       (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
