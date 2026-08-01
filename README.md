@@ -12,3 +12,10 @@ Pop Up tip appears when cursor is on error string. `C-g` to force close tip.
 ## Customizing
 There are a couple of variables in ```flycheck-gtk-tip``` group, which could be customized.
 One of them: ```flycheck-gtk-tip-vertical-offset``` could be used to adjust popup tip vertically, cause this gap depends on emacs window decorations used.
+
+## Uninstalling/Updating
+Just delete folder ```~/.emacs.d/elpa/flycheck-gtk-tip```.
+Having ```elisp
+(use-package flycheck-gtk-tip
+  :vc (:url "https://github.com/aganzha/flycheck-gtk-tip"))
+``` in your emacs will bring latest version from github.
