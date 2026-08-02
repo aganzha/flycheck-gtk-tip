@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.7
+;; Version: 0.1.8
 ;; Package-Requires: ((emacs "30.2"))
 ;; Keywords: convenience, flycheck
 
@@ -145,15 +145,22 @@
                     (format "lib%s.so" module-name)))
            (sopath (concat (file-name-directory load-file-name) soname)))
       (unless (file-exists-p sopath)
-        (let* ((backend (vc-git-repository-url load-file-name))
-              (release (concat
-                        (string-replace
-                         "git@github.com:"
-                         "https://github.com/"
-                         (string-remove-suffix ".git" backend))
-                        "/releases/download/latest/"
-                        soname)))
-          (url-copy-file release sopath t)))
+        (let ((backend (condition-case err
+                           (vc-git-repository-url load-file-name)
+                         (error
+                          (let ((repo-dir (file-name-directory load-file-name)))
+                            (string-trim
+                             (shell-command-to-string
+                              (format "git -C %s remote get-url origin"
+                                      (shell-quote-argument repo-dir)))))))))
+          (let* ((release (concat
+                           (string-replace
+                            "git@github.com:"
+                            "https://github.com/"
+                            (string-remove-suffix ".git" backend))
+                           "/releases/download/latest/"
+                           soname)))
+            (url-copy-file release sopath t))))
       (module-load sopath)
       (setq flycheck-display-errors-function #'flycheck-gtk-tip-display-errors-function)
       (setq flycheck-clear-displayed-errors-function #'flycheck-gtk-tip-hide)
