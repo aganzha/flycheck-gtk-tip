@@ -4,7 +4,7 @@
 
 ;; Author: Aleksey Ganzha <aganzha@yandex.ru>
 ;; URL: https://github.com/aganzha/flycheck-gtk-tip
-;; Version: 0.1.9
+;; Version: 0.1.10
 ;; Package-Requires: ((emacs "30.2"))
 ;; Keywords: convenience, flycheck
 
@@ -149,7 +149,7 @@
                            (vc-git-repository-url load-file-name)
                          (error
                           (let ((repo-dir
-                                 (replace-regexp-in-string "build" "repos"
+                                 (replace-regexp-in-string "build\\(-[0-9.]+\\)?" "repos"
                                  (file-name-directory load-file-name))))
                             (string-trim
                              (shell-command-to-string
